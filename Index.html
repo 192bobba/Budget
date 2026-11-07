@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="fr-CH">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon Budget Suisse 🇨🇭</title>
+<style>
+  :root{
+    --rouge:#d52b1e; --rouge-fonce:#b21f15; --vert:#1f9d55; --vert-bg:#e7f6ee;
+    --rouge-bg:#fdecea; --orange:#e08c00; --orange-bg:#fdf3e0;
+    --bg:#f4f6f8; --card:#ffffff; --txt:#1f2733; --muted:#697586;
+    --bord:#e2e8f0; --bleu:#2563eb; --bleu-bg:#eaf1fe; --ombre:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--txt);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{margin:0 0 .4em}
+  a{color:var(--bleu);text-decoration:none}
+  a:hover{text-decoration:underline}
+  button{font-family:inherit;font-size:14px;cursor:pointer;border:none;border-radius:8px;padding:9px 14px;font-weight:600;transition:.15s}
+  input,select{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--bord);border-radius:8px;background:#fff;color:var(--txt);width:100%}
+  input:focus,select:focus{outline:none;border-color:var(--bleu);box-shadow:0 0 0 3px var(--bleu-bg)}
+  input[type=number]{text-align:right}
+  label{font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:3px}
+  .btn-primary{background:var(--rouge);color:#fff}
+  .btn-primary:hover{background:var(--rouge-fonce)}
+  .btn-ghost{background:#fff;color:var(--txt);border:1px solid var(--bord)}
+  .btn-ghost:hover{background:#f8fafc}
+  .btn-sm{padding:6px 10px;font-size:13px}
+  .btn-danger{background:#fff;color:var(--rouge);border:1px solid var(--bord)}
+  .btn-danger:hover{background:var(--rouge-bg)}
+
+  header{background:#fff;border-bottom:1px solid var(--bord);position:sticky;top:0;z-index:50;box-shadow:var(--ombre)}
+  .head-inner{max-width:1200px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .logo{font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .logo .ch{background:var(--rouge);color:#fff;border-radius:6px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:18px}
+  .head-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .save-state{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--vert)}
+
+  nav.tabs{max-width:1200px;margin:0 auto;padding:0 12px;display:flex;gap:2px;overflow-x:auto}
+  nav.tabs button{background:transparent;color:var(--muted);border-radius:0;border-bottom:3px solid transparent;padding:13px 10px;white-space:nowrap}
+  @media(min-width:721px){nav.tabs{flex-wrap:wrap;overflow-x:visible}}
+  nav.tabs button.active{color:var(--rouge);border-bottom-color:var(--rouge)}
+  nav.tabs button:hover{color:var(--txt)}
+
+  main{max-width:1200px;margin:0 auto;padding:22px 20px 80px}
+  .tab-page{display:none;animation:fade .2s}
+  .tab-page.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  .card{background:var(--card);border:1px solid var(--bord);border-radius:var(--radius);padding:20px;margin-bottom:18px;box-shadow:var(--ombre)}
+  .card h2{font-size:18px;display:flex;align-items:center;gap:8px}
+  .card .sub{color:var(--muted);font-size:13px;margin:-4px 0 16px}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1fr 1fr 1fr}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g5{grid-template-columns:repeat(5,1fr)}
+  @media(max-width:960px){.g5{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:720px){.g2,.g3,.g4,.g5{grid-template-columns:1fr}}
+
+  .row{display:grid;grid-template-columns:2fr 1.2fr 1.3fr auto;gap:10px;align-items:end;margin-bottom:10px}
+  .row.pay{grid-template-columns:1.8fr 1fr 1.1fr 1.4fr 110px}
+  .row.ep{grid-template-columns:2fr 1.2fr 1.3fr 110px}
+  .row.ins{grid-template-columns:1.3fr 1.2fr .9fr 1fr 1.3fr auto}
+  @media(max-width:720px){.row,.row.pay,.row.ep,.row.ins{grid-template-columns:1fr 1fr;}.row .full,.row .paycell{grid-column:1/-1}
+    .row.pay .delcell,.row.ins .delcell{grid-column:1/-1;display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center}}
+  .row-hint{grid-column:1/-1;font-size:12.5px;background:var(--orange-bg);color:#92520a;border-radius:8px;padding:7px 10px}
+  .row-hint:empty{display:none}
+  .row-hint button{padding:3px 9px;font-size:12px;margin-left:6px;background:#fff;border:1px solid #f5d9a8;color:#92520a}
+  .pay-legend{font-size:12.5px;color:var(--muted);background:var(--bg);border-radius:10px;padding:10px 12px;margin:0 0 14px}
+  .split{font-size:12.5px;margin-top:4px}
+  tr.sub td{font-weight:700;background:var(--bg)}
+  td.neg{color:var(--rouge)} td.pos{color:var(--vert)}
+  tr.total.pos td:last-child{color:var(--vert)} tr.total.neg td:last-child{color:var(--rouge)}
+  .tbl-wrap{overflow-x:auto}
+  .tbl-wrap td.num{white-space:nowrap}
+  @media(max-width:720px){.tbl-wrap table{font-size:12.5px}.tbl-wrap th,.tbl-wrap td{padding:7px 4px}.tbl-wrap th{font-size:10.5px}}
+  .del{background:var(--rouge-bg);color:var(--rouge);border-radius:8px;padding:9px 11px;font-weight:700}
+  .del:hover{background:#fbd5d0}
+
+  .stat{background:var(--bg);border-radius:10px;padding:14px 16px}
+  .stat .lbl{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .stat .val{font-size:24px;font-weight:800;margin-top:3px}
+  .stat.green .val{color:var(--vert)} .stat.red .val{color:var(--rouge)} .stat.blue .val{color:var(--bleu)}
+
+  .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px}
+  .pill.green{background:var(--vert-bg);color:var(--vert)}
+  .pill.red{background:var(--rouge-bg);color:var(--rouge)}
+  .pill.orange{background:var(--orange-bg);color:var(--orange)}
+  .pill.blue{background:var(--bleu-bg);color:var(--bleu)}
+
+  .info{background:var(--bleu-bg);border:1px solid #cfe0fd;color:#1e40af;border-radius:10px;padding:12px 14px;font-size:13px;margin:12px 0}
+  .warn{background:var(--orange-bg);border:1px solid #f5d9a8;color:#92520a;border-radius:10px;padding:12px 14px;font-size:13px;margin:12px 0}
+  .muted{color:var(--muted)} .small{font-size:12.5px}
+
+  .bar-wrap{margin:10px 0}
+  .bar-track{height:26px;background:var(--bg);border-radius:8px;overflow:hidden;display:flex}
+  .bar-seg{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--bord)}
+  th{font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.03em}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr.total td{font-weight:800;border-top:2px solid var(--txt);border-bottom:none}
+
+  .ins-card{border:1px solid var(--bord);border-radius:10px;padding:14px;margin-bottom:12px;background:#fff}
+  .ins-card .links a{display:inline-block;margin-right:10px;font-weight:600;font-size:13px}
+  .add-btn{background:var(--vert-bg);color:var(--vert);border:1px dashed var(--vert);width:100%;padding:11px;font-weight:700}
+  .add-btn:hover{background:#d8f0e2}
+
+  .model{border:1px solid var(--bord);border-radius:10px;padding:16px;cursor:pointer;transition:.15s}
+  .model:hover{border-color:var(--bleu);box-shadow:var(--ombre)}
+  .model.sel{border-color:var(--rouge);background:var(--rouge-bg)}
+  .model h3{font-size:15px;margin-bottom:6px}
+  .model .pct{font-size:13px;color:var(--muted)}
+
+  footer{max-width:1200px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-size:12px;line-height:1.6}
+  .hr{height:1px;background:var(--bord);margin:18px 0;border:none}
+  .inline-help{font-size:12px;color:var(--muted);margin-top:3px}
+  .toggle-line{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .toggle-line input{width:auto}
+  .badge-freq{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <div class="logo"><span class="ch">🇨🇭</span> Mon Budget</div>
+    <div class="head-actions">
+      <span class="save-state" title="Vos saisies sont conservées dans CE navigateur, même si vous fermez l'onglet. Ce n'est pas un fichier : pour une sauvegarde sur votre ordinateur, cliquez sur « Exporter »."><span class="dot"></span><span id="saveTxt">Gardé dans ce navigateur ⓘ</span></span>
+      <button class="btn-ghost btn-sm" onclick="loadExample()">📋 Exemple</button>
+      <button class="btn-ghost btn-sm" onclick="exportData()">⬇️ Exporter</button>
+      <button class="btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">⬆️ Importer</button>
+      <button class="btn-danger btn-sm" onclick="resetAll()">🗑️ Réinitialiser</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+
+<main>
+  <!-- ============ REVENUS ============ -->
+  <section class="tab-page" data-tab="revenus">
+    <div class="card">
+      <h2>💰 Vos revenus</h2>
+      <p class="sub">Commencez ici : indiquez votre salaire, le nombre de mois et vos éventuelles primes.</p>
+      <div class="grid g3">
+        <div>
+          <label>Salaire brut mensuel (CHF)</label>
+          <input type="number" id="r_brut" placeholder="6500" oninput="calc()">
+        </div>
+        <div>
+          <label>Versé sur combien de mois ?</label>
+          <select id="r_mois" onchange="calc()">
+            <option value="12">12 mois</option>
+            <option value="13">13 mois (13ᵉ salaire)</option>
+            <option value="14">14 mois</option>
+          </select>
+        </div>
+        <div>
+          <label>Prime / bonus annuel (CHF)</label>
+          <input type="number" id="r_prime" placeholder="0" oninput="calc()">
+          <div class="inline-help">Bonus de performance, gratification…</div>
+        </div>
+      </div>
+      <hr class="hr">
+      <div class="grid g3">
+        <div>
+          <label>Autres revenus nets / mois (CHF)</label>
+          <input type="number" id="r_autres" placeholder="0" oninput="calc()">
+          <div class="inline-help">Loyer perçu, activité accessoire, allocations…</div>
+        </div>
+        <div>
+          <label>Cotisations sociales estimées (%)</label>
+          <input type="number" id="r_social" value="13" oninput="calc()">
+          <div class="inline-help">AVS/AI/APG + AC + LPP + LAA ≈ 12–18 %</div>
+        </div>
+        <div>
+          <label class="toggle-line"><input type="checkbox" id="r_netManuel" onchange="calc()"> Je saisis mon net directement</label>
+          <input type="number" id="r_netVal" placeholder="Revenu net / mois" oninput="calc()">
+          <div class="inline-help">Laissez vide pour l'estimer automatiquement</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Synthèse de vos revenus</h2>
+      <div class="grid g4">
+        <div class="stat"><div class="lbl">Brut annuel</div><div class="val" id="o_brutAn">–</div></div>
+        <div class="stat blue"><div class="lbl">Net annuel estimé</div><div class="val" id="o_netAn">–</div></div>
+        <div class="stat green"><div class="lbl">Net mensuel (lissé)</div><div class="val" id="o_netMois">–</div></div>
+        <div class="stat"><div class="lbl">Cotisations / an</div><div class="val" id="o_cotis">–</div></div>
+      </div>
+      <p class="small muted" style="margin-top:14px">💡 Le « net mensuel lissé » répartit le 13ᵉ salaire et les primes sur 12 mois — c'est la base utilisée pour votre budget.</p>
+    </div>
+  </section>
+
+  <!-- ============ FRAIS FIXES ============ -->
+  <section class="tab-page" data-tab="fixes">
+    <div class="card">
+      <h2>🏠 Frais fixes</h2>
+      <p class="sub">Loyer, télécoms, abonnements, Serafe, électricité… Indiquez la fréquence : le calcul mensuel est automatique.</p>
+      <div class="pay-legend"></div>
+      <div id="list_fixes"></div>
+      <button class="add-btn" onclick="addItem('fixes')">+ Ajouter un frais fixe</button>
+      <div class="info" id="fixes_total">Total mensuel : CHF 0.–</div>
+    </div>
+  </section>
+
+  <!-- ============ FRAIS VARIABLES ============ -->
+  <section class="tab-page" data-tab="variables">
+    <div class="card">
+      <h2>🛒 Frais variables</h2>
+      <p class="sub">Courses, restaurants, loisirs, essence, vacances… Les dépenses qui changent chaque mois.</p>
+      <div class="pay-legend"></div>
+      <div id="list_variables"></div>
+      <button class="add-btn" onclick="addItem('variables')">+ Ajouter un frais variable</button>
+      <div class="info" id="variables_total">Total mensuel : CHF 0.–</div>
+    </div>
+  </section>
+
+  <!-- ============ ASSURANCES ============ -->
+  <section class="tab-page" data-tab="assurances">
+    <div class="card">
+      <h2>🛡️ Assurances</h2>
+      <p class="sub">Listez vos assurances. L'app vous indique les <b>délais de résiliation</b> et des pistes d'<b>optimisation</b>.</p>
+      <div class="pay-legend"></div>
+      <div id="list_assurances"></div>
+      <button class="add-btn" onclick="addInsurance()">+ Ajouter une assurance</button>
+      <div class="info" id="assurances_total">Total mensuel : CHF 0.–</div>
+    </div>
+  </section>
+
+  <!-- ============ ÉPARGNE CASH ============ -->
+  <section class="tab-page" data-tab="epargne">
+    <div class="card">
+      <h2>🐷 Épargne cash</h2>
+      <p class="sub">L'argent que vous virez sur un <b>compte épargne auquel vous ne touchez pas</b> (réserve de sécurité, projets…). Il est compté à part du 3ᵉ pilier, qui se gère dans l'onglet 🌳.</p>
+      <div id="list_epargne"></div>
+      <button class="add-btn" onclick="addItem('epargne')">+ Ajouter un virement d'épargne</button>
+      <div class="info" id="epargne_total">Total mensuel : CHF 0.–</div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Votre épargne en un coup d'œil</h2>
+      <div class="grid g4">
+        <div class="stat blue"><div class="lbl">🐷 Épargne cash / mois</div><div class="val" id="e_cashMois">–</div></div>
+        <div class="stat green"><div class="lbl">🌳 Épargne 3a / mois</div><div class="val" id="e_3aMois">–</div></div>
+        <div class="stat"><div class="lbl">Épargne prévue / an</div><div class="val" id="e_totalAn">–</div></div>
+        <div class="stat"><div class="lbl">Taux d'épargne prévu</div><div class="val" id="e_taux">–</div></div>
+      </div>
+      <div id="e_reserve"></div>
+    </div>
+  </section>
+
+  <!-- ============ 3e PILIER ============ -->
+  <section class="tab-page" data-tab="pilier">
+    <div class="card">
+      <h2>🌳 3ᵉ pilier (3a) & prévoyance</h2>
+      <p class="sub">Vos comptes 3a réduisent vos impôts. Simulez votre économie d'impôt.</p>
+      <div class="grid g4">
+        <div>
+          <label>Situation de prévoyance</label>
+          <select id="p_type" onchange="calc()">
+            <option value="caisse">Salarié·e avec caisse de pension (2ᵉ pilier)</option>
+            <option value="sans">Sans 2ᵉ pilier (indépendant·e)</option>
+          </select>
+        </div>
+        <div>
+          <label>Plafond 3a déductible / an (CHF)</label>
+          <input type="number" id="p_plafond" value="7258" oninput="calc()">
+          <div class="inline-help">2025 : 7'258.– avec caisse · 20 % du revenu (max 36'288.–) sans caisse</div>
+        </div>
+        <div>
+          <label>Versement 3a prévu cette année (CHF)</label>
+          <input type="number" id="p_versement" placeholder="7258" oninput="calc()">
+        </div>
+        <div>
+          <label>Comment versez-vous le 3a ?</label>
+          <select id="p_pay" onchange="calc()">
+            <option value="direct">⚡ Ordre permanent mensuel vers le 3a</option>
+            <option value="souscompte">🏦 Mis de côté sur le sous-compte, versé en une fois</option>
+          </select>
+          <div class="inline-help">Utilisé dans l'onglet 💸 Jour de paie</div>
+        </div>
+      </div>
+      <hr class="hr">
+      <h3 style="font-size:15px">Vos comptes 3a existants</h3>
+      <div id="list_pilier"></div>
+      <button class="add-btn" onclick="addPilier()">+ Ajouter un compte 3a</button>
+    </div>
+
+    <div class="card">
+      <h2>🧮 Économie d'impôt estimée grâce au 3a</h2>
+      <div class="grid g3">
+        <div class="stat green"><div class="lbl">Économie d'impôt / an</div><div class="val" id="p_economie">–</div></div>
+        <div class="stat blue"><div class="lbl">Taux marginal estimé</div><div class="val" id="p_marginal">–</div></div>
+        <div class="stat"><div class="lbl">Total déjà épargné en 3a</div><div class="val" id="p_total">–</div></div>
+      </div>
+      <div class="info">💡 Verser le plafond 3a est l'un des moyens les plus simples de réduire vos impôts. Pensez aussi à ouvrir <b>plusieurs comptes 3a</b> pour échelonner les retraits à la retraite et casser la progression fiscale. Le calcul dépend de votre onglet <b>Impôts</b>.</div>
+    </div>
+  </section>
+
+  <!-- ============ COMPTES & FORTUNE ============ -->
+  <section class="tab-page" data-tab="fortune">
+    <div class="card">
+      <h2>🏦 Comptes bancaires & fortune</h2>
+      <p class="sub">Comptes, épargne, placements, et dettes éventuelles pour calculer votre fortune nette.</p>
+      <div id="list_comptes"></div>
+      <button class="add-btn" onclick="addCompte()">+ Ajouter un compte / actif / dette</button>
+    </div>
+    <div class="card">
+      <h2>💎 Fortune nette</h2>
+      <div class="grid g3">
+        <div class="stat green"><div class="lbl">Total des actifs</div><div class="val" id="f_actifs">–</div></div>
+        <div class="stat red"><div class="lbl">Total des dettes</div><div class="val" id="f_dettes">–</div></div>
+        <div class="stat blue"><div class="lbl">Fortune nette</div><div class="val" id="f_nette">–</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ IMPOTS ============ -->
+  <section class="tab-page" data-tab="impots">
+    <div class="card">
+      <h2>🧾 Simulateur d'imposition (estimation)</h2>
+      <p class="sub">Estimation simplifiée : impôt fédéral direct (IFD) + impôt cantonal & communal. Pour un calcul officiel, utilisez le calculateur de votre canton.</p>
+      <div class="grid g3">
+        <div>
+          <label>Situation familiale</label>
+          <select id="i_statut" onchange="calc()">
+            <option value="single">Personne seule</option>
+            <option value="couple">Marié·e / partenariat (revenus cumulés)</option>
+          </select>
+        </div>
+        <div>
+          <label>Canton</label>
+          <select id="i_canton" onchange="onCantonChange()"></select>
+        </div>
+        <div>
+          <label>Nombre d'enfants à charge</label>
+          <input type="number" id="i_enfants" value="0" oninput="calc()">
+        </div>
+      </div>
+      <hr class="hr">
+      <div class="grid g3">
+        <div>
+          <label>Revenu net annuel (CHF)</label>
+          <input type="number" id="i_revenu" placeholder="auto" oninput="calc()">
+          <div class="inline-help">Vide = repris depuis l'onglet Revenus</div>
+        </div>
+        <div>
+          <label>Autres déductions / an (CHF)</label>
+          <input type="number" id="i_deductions" value="0" oninput="calc()">
+          <div class="inline-help">Frais pro, trajets, intérêts, pensions…</div>
+        </div>
+        <div>
+          <label>Taux cantonal + communal estimé (%)</label>
+          <input type="number" id="i_tauxCanton" step="0.1" oninput="calc()">
+          <div class="inline-help">Pré-rempli selon le canton — ajustable</div>
+        </div>
+      </div>
+      <hr class="hr">
+      <div class="grid g3">
+        <div>
+          <label>Comment payez-vous vos impôts ?</label>
+          <select id="i_pay" onchange="calc()">
+            <option value="souscompte">🏦 Provision mensuelle sur le sous-compte</option>
+            <option value="direct">⚡ Acomptes prélevés directement chaque mois</option>
+          </select>
+          <div class="inline-help">Utilisé dans l'onglet 💸 Jour de paie</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📉 Estimation de vos impôts</h2>
+      <div class="grid g4">
+        <div class="stat"><div class="lbl">Revenu imposable</div><div class="val" id="i_imposable">–</div></div>
+        <div class="stat"><div class="lbl">Impôt fédéral (IFD)</div><div class="val" id="i_ifd">–</div></div>
+        <div class="stat"><div class="lbl">Impôt cantonal & communal</div><div class="val" id="i_cc">–</div></div>
+        <div class="stat red"><div class="lbl">Total impôts / an</div><div class="val" id="i_total">–</div></div>
+      </div>
+      <div class="grid g2" style="margin-top:14px">
+        <div class="stat blue"><div class="lbl">Taux d'imposition moyen</div><div class="val" id="i_moyen">–</div></div>
+        <div class="stat"><div class="lbl">Soit par mois (provision)</div><div class="val" id="i_mois">–</div></div>
+      </div>
+      <div class="warn">⚠️ Estimation indicative uniquement. Les barèmes cantonaux et communaux varient fortement (coefficient communal, déductions spécifiques). Vérifiez avec le calculateur officiel de votre canton ou de l'<a href="https://www.estv.admin.ch/estv/fr/accueil/afc/calculateurs-d-impots.html" target="_blank" rel="noopener">AFC</a>.</div>
+    </div>
+  </section>
+
+  <!-- ============ BUDGET ============ -->
+  <section class="tab-page" data-tab="budget">
+    <div class="card">
+      <h2>⚖️ Synthèse de votre budget mensuel</h2>
+      <div class="grid g5">
+        <div class="stat green"><div class="lbl">Revenu net / mois</div><div class="val" id="b_revenu">–</div></div>
+        <div class="stat red"><div class="lbl">Dépenses / mois</div><div class="val" id="b_depenses">–</div></div>
+        <div class="stat blue"><div class="lbl">🐷 Épargne cash</div><div class="val" id="b_cash">–</div></div>
+        <div class="stat green"><div class="lbl">🌳 Épargne 3a</div><div class="val" id="b_3a">–</div></div>
+        <div class="stat" id="b_resteCard"><div class="lbl">Reste à la fin du mois</div><div class="val" id="b_reste">–</div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-track" id="b_bar"></div>
+        <div class="small muted" id="b_legend" style="margin-top:8px"></div>
+      </div>
+      <div id="b_verdict"></div>
+      <p class="small muted" style="margin-bottom:0">💸 Pour savoir quoi virer où le jour du salaire (prélèvements directs, sous-compte, épargne), voir l'onglet <a href="#" onclick="goTab('paie');return false">Jour de paie</a>.</p>
+    </div>
+
+    <div class="card">
+      <h2>📋 Répartition détaillée</h2>
+      <table>
+        <thead><tr><th>Poste</th><th class="num">CHF / mois</th><th class="num">% du revenu</th></tr></thead>
+        <tbody id="b_table"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>🎯 Modèles de budget conseillés</h2>
+      <p class="sub">Choisissez un modèle adapté à votre situation. Objectif : finir en positif et épargner sans tout vous interdire.</p>
+      <div class="grid g3" id="b_models"></div>
+      <div id="b_modelDetail" style="margin-top:16px"></div>
+    </div>
+  </section>
+
+  <!-- ============ JOUR DE PAIE ============ -->
+  <section class="tab-page" data-tab="paie">
+    <div class="card">
+      <h2>💸 Le jour de paie : où va votre salaire ?</h2>
+      <p class="sub">Dès que le salaire arrive, les <b>prélèvements directs</b> partent. Vous virez ensuite une somme fixe sur le <b>sous-compte</b> (pour régler en une fois les factures trimestrielles, annuelles…), sur l'<b>épargne</b> et le <b>3a</b>. Le reste couvre les dépenses du mois.</p>
+      <div class="grid g5">
+        <div class="stat"><div class="lbl">⚡ Prélevé directement</div><div class="val" id="pa_direct">–</div></div>
+        <div class="stat"><div class="lbl">🏦 Vers le sous-compte</div><div class="val" id="pa_sous">–</div></div>
+        <div class="stat blue"><div class="lbl">🐷 Vers l'épargne cash</div><div class="val" id="pa_cash">–</div></div>
+        <div class="stat green"><div class="lbl">🌳 Vers le 3a</div><div class="val" id="pa_3a">–</div></div>
+        <div class="stat" id="pa_margeCard"><div class="lbl">Marge en fin de mois</div><div class="val" id="pa_marge">–</div></div>
+      </div>
+      <div class="tbl-wrap" style="margin-top:16px">
+        <table>
+          <thead><tr><th>Étape</th><th class="num">Montant</th><th class="num">Solde du compte salaire</th></tr></thead>
+          <tbody id="pa_flow"></tbody>
+        </table>
+      </div>
+      <div id="pa_13"></div>
+    </div>
+
+    <div class="card">
+      <h2>📌 Ordres permanents à programmer</h2>
+      <p class="sub">À programmer pour le jour du versement du salaire (ou le lendemain), pour que l'argent parte avant d'être dépensé.</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Vers</th><th class="num">Montant / mois</th><th>Ce que ça couvre</th></tr></thead>
+        <tbody id="pa_ordres"></tbody>
+      </table></div>
+      <div id="pa_ordresTip"></div>
+    </div>
+
+    <div class="card">
+      <h2>⚡ Prélevé directement à réception du salaire</h2>
+      <p class="sub">Ordres permanents, LSV, eBill… débités automatiquement du compte salaire.</p>
+      <div class="tbl-wrap" id="pa_directTbl"></div>
+    </div>
+
+    <div class="card">
+      <h2>🏦 Sous-compte charges</h2>
+      <p class="sub">Chaque mois, vous virez la provision. Quand la facture arrive, vous la payez <b>en entier</b> depuis le sous-compte, sans toucher au budget du mois.</p>
+      <div class="tbl-wrap" id="pa_sousTbl"></div>
+      <div id="pa_sousTip"></div>
+    </div>
+
+    <div class="card">
+      <h2>💳 Dépenses au fil du mois</h2>
+      <p class="sub">Payées par carte, Twint ou cash sur le compte salaire, avec ce qui reste après les virements.</p>
+      <div class="tbl-wrap" id="pa_courantTbl"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <hr class="hr">
+  <p><b>Mon Budget Suisse</b> — outil personnel, hors-ligne. Toutes vos données restent sur <b>votre</b> ordinateur (stockage local du navigateur). Aucune donnée n'est envoyée sur internet. Pensez à <b>exporter</b> régulièrement votre fichier de sauvegarde.</p>
+  <p>Les calculs fiscaux et de prévoyance sont des <b>estimations simplifiées</b> et ne constituent pas un conseil financier ou fiscal. Pour des décisions importantes, consultez un·e spécialiste ou les calculateurs officiels.</p>
+</footer>
+
+<script>
+/* =================== ÉTAT =================== */
+const FREQ = {mensuel:12, hebdomadaire:52, trimestriel:4, semestriel:2, annuel:1};
+const FREQ_LABEL = {mensuel:"Mensuel", hebdomadaire:"Hebdomadaire", trimestriel:"Trimestriel", semestriel:"Semestriel", annuel:"Annuel"};
+const FREQ_ADJ = {trimestriel:"trimestrielle", semestriel:"semestrielle", annuel:"annuelle"};
+
+// Mode de paiement d'une charge : d'où part l'argent ?
+const PAY = {
+  direct:"⚡ Prélevé directement",   // débité du compte salaire dès réception du salaire (ordre permanent, LSV, eBill)
+  souscompte:"🏦 Via sous-compte",   // provision mensuelle virée sur un sous-compte, qui paie la facture en entier
+  courant:"💳 Au fil du mois"        // payé par carte / Twint / cash pendant le mois
+};
+const PAY_LEGEND = `<b>Paiement</b> — <b>⚡ Prélevé directement</b> : débité du compte salaire dès réception du salaire (ordre permanent, LSV, eBill). · <b>🏦 Via sous-compte</b> : vous virez chaque mois une provision sur un sous-compte, qui règle la facture en entier à l'échéance (idéal pour les factures trimestrielles ou annuelles). · <b>💳 Au fil du mois</b> : carte, Twint, cash.`;
+const PLACEHOLDER = {fixes:"Ex. Loyer, Netflix, Serafe…", variables:"Ex. Courses, restaurants, vacances…", epargne:"Ex. Compte épargne, fonds d'urgence…"};
+
+const CANTONS = {
+  ZH:["Zurich",8],BE:["Berne",12],LU:["Lucerne",8],UR:["Uri",7],SZ:["Schwytz",6],
+  OW:["Obwald",7],NW:["Nidwald",6],GL:["Glaris",9],ZG:["Zoug",5],FR:["Fribourg",11],
+  SO:["Soleure",11],BS:["Bâle-Ville",11],BL:["Bâle-Campagne",11],SH:["Schaffhouse",9],
+  AR:["Appenzell Rh.-Ext.",9],AI:["Appenzell Rh.-Int.",7],SG:["Saint-Gall",9],GR:["Grisons",9],
+  AG:["Argovie",9],TG:["Thurgovie",9],TI:["Tessin",10],VD:["Vaud",12],VS:["Valais",10],
+  NE:["Neuchâtel",13],GE:["Genève",12],JU:["Jura",13]
+};
+
+const INS_TYPES = {
+  "maladie_base":{label:"Assurance maladie de base (LAMal)", notice:"Résiliation au 30 novembre pour un changement au 1er janvier (préavis 1 mois). La caisse doit recevoir la lettre avant le 30.11.", tip:"Comparez les primes de base — elles couvrent toutes la même chose par la loi. Vérifiez aussi votre franchise et le modèle (médecin de famille, télémédecine).", links:[["Comparis","https://www.comparis.ch/krankenkassen/default"],["Priminfo (OFSP)","https://www.priminfo.admin.ch/fr"],["bonus.ch","https://www.bonus.ch/assurance-maladie/"]]},
+  "maladie_compl":{label:"Assurance maladie complémentaire (LCA)", notice:"En général préavis de 3 mois pour la fin de l'année. Attention : changer de complémentaire peut nécessiter un examen de santé.", tip:"Gardez votre complémentaire actuelle si votre santé a changé. Sinon comparez les couvertures réellement utiles.", links:[["Comparis","https://www.comparis.ch/krankenkassen/zusatzversicherung/zusatzversicherung-vergleich"],["bonus.ch","https://www.bonus.ch/assurance-maladie-complementaire/"]]},
+  "voiture":{label:"Assurance véhicule (RC / casco)", notice:"Préavis typique de 3 mois avant l'échéance annuelle du contrat. Vérifiez la date d'échéance sur votre police.", tip:"Comparez RC + casco chaque année. Adaptez la casco selon l'âge du véhicule (la casco complète est rarement utile au-delà de ~8 ans).", links:[["Comparis","https://www.comparis.ch/autoversicherung/default"],["FinanceScout24","https://www.financescout24.ch/fr/assurance-auto"],["bonus.ch","https://www.bonus.ch/assurance-auto/"]]},
+  "menage_rc":{label:"Assurance ménage & RC privée", notice:"Préavis typique de 3 mois avant l'échéance. Souvent contrat de 1 à 3 ans.", tip:"Regroupez ménage + RC chez un même assureur pour un rabais. Vérifiez que la somme assurée correspond à la valeur réelle de vos biens.", links:[["Comparis","https://www.comparis.ch/hausrat/default"],["FinanceScout24","https://www.financescout24.ch/fr/assurance-menage"],["bonus.ch","https://www.bonus.ch/assurance-menage/"]]},
+  "vie_3a":{label:"Assurance-vie / 3a (pilier 3a lié)", notice:"Résiliation possible mais souvent désavantageuse (valeur de rachat faible les premières années).", tip:"Avant de résilier, vérifiez la valeur de rachat. Un 3a bancaire est souvent plus flexible qu'un 3a en assurance.", links:[["Comparis 3a","https://www.comparis.ch/saeule-3a/default"],["bonus.ch 3e pilier","https://www.bonus.ch/3e-pilier/"]]},
+  "protection_juridique":{label:"Protection juridique", notice:"Préavis typique de 3 mois avant l'échéance annuelle.", tip:"Comparez la couverture (circulation, privée, travail) avant de renouveler.", links:[["Comparis","https://www.comparis.ch/rechtsschutzversicherung/default"],["bonus.ch","https://www.bonus.ch/protection-juridique/"]]},
+  "autre":{label:"Autre assurance", notice:"Vérifiez le délai de résiliation indiqué sur votre police (souvent 3 mois avant l'échéance).", tip:"Comparez les offres une fois par an.", links:[["Comparis","https://www.comparis.ch"],["FinanceScout24","https://www.financescout24.ch/fr"],["bonus.ch","https://www.bonus.ch"]]}
+};
+
+let state = blankState();
+function blankState(){
+  return {
+    revenus:{brut:"",mois:"12",prime:"",autres:"",social:"13",netManuel:false,netVal:""},
+    fixes:[], variables:[], assurances:[], epargne:[], pilier:[], comptes:[],
+    pilierCfg:{type:"caisse",plafond:"7258",versement:"",pay:"direct"},
+    impots:{statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:"",pay:"souscompte"},
+    budgetModel:"503020"
+  };
+}
+// Complète un état chargé (ancienne sauvegarde, fichier importé) avec les champs ajoutés depuis.
+function normalizeState(s){
+  const b=blankState();
+  s=Object.assign(b,s||{});
+  ['revenus','pilierCfg','impots'].forEach(k=>{ s[k]=Object.assign(blankState()[k], s[k]||{}); });
+  ['fixes','variables','assurances','epargne','pilier','comptes'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  // Anciennes données sans mode de paiement : mensuel → prélevé directement, sinon → sous-compte
+  const mensuel = it => FREQ[it.freq||'mensuel']>=12;
+  s.fixes.forEach(it=>{ if(!PAY[it.pay]) it.pay = mensuel(it)?'direct':'souscompte'; });
+  s.assurances.forEach(it=>{ if(!PAY[it.pay]) it.pay = mensuel(it)?'direct':'souscompte'; });
+  s.variables.forEach(it=>{ if(!PAY[it.pay]) it.pay = mensuel(it)?'courant':'souscompte'; });
+  if(!['direct','souscompte'].includes(s.pilierCfg.pay)) s.pilierCfg.pay='direct';
+  if(!['direct','souscompte'].includes(s.impots.pay)) s.impots.pay='souscompte';
+  return s;
+}
+
+/* =================== TABS =================== */
+const TABS = [["revenus","💰 Revenus"],["fixes","🏠 Frais fixes"],["variables","🛒 Frais variables"],
+  ["assurances","🛡️ Assurances"],["epargne","🐷 Épargne"],["pilier","🌳 3ᵉ pilier"],["fortune","🏦 Comptes & Fortune"],
+  ["impots","🧾 Impôts"],["budget","⚖️ Budget"],["paie","💸 Jour de paie"]];
+function buildTabs(){
+  const nav=document.getElementById('tabs');
+  TABS.forEach(([id,lbl],i)=>{
+    const b=document.createElement('button');
+    b.textContent=lbl; b.dataset.tab=id; if(i===0)b.classList.add('active');
+    b.onclick=()=>goTab(id);
+    nav.appendChild(b);
+  });
+  document.querySelector('.tab-page[data-tab="revenus"]').classList.add('active');
+  document.querySelectorAll('.pay-legend').forEach(e=>e.innerHTML=PAY_LEGEND);
+}
+function goTab(id){
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+  document.querySelectorAll('.tab-page').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* =================== HELPERS =================== */
+const CHF = n => "CHF "+ (Math.round(n)).toLocaleString('fr-CH').replace(/ /g,"'") + ".–";
+const signed = n => (n<0?"− ":"+ ")+CHF(Math.abs(n));
+const num = v => { const n=parseFloat(v); return isNaN(n)?0:n; };
+const pct = n => (n).toLocaleString('fr-CH',{maximumFractionDigits:1})+" %";
+function monthlyOf(item){ return num(item.amount)*FREQ[item.freq||'mensuel']/12; }
+
+/* =================== LISTES DYNAMIQUES (frais) =================== */
+function freqSelect(val){
+  return Object.keys(FREQ).map(k=>`<option value="${k}" ${k===val?'selected':''}>${FREQ_LABEL[k]}</option>`).join('');
+}
+function paySelect(val){
+  return Object.entries(PAY).map(([k,l])=>`<option value="${k}" ${k===val?'selected':''}>${l}</option>`).join('');
+}
+// Petit conseil sous une ligne : facture non mensuelle payée d'un coup, ou épargne saisie comme une dépense
+function payHint(kind,idx){
+  const it=state[kind][idx]; if(!it) return '';
+  if((kind==='fixes'||kind==='variables') && /[ée]pargne/i.test(it.label||''))
+    return `🐷 Cette ligne ressemble à de l'épargne : pour la compter comme épargne (et non comme dépense), déplacez-la dans l'onglet Épargne.<button onclick="moveToEpargne('${kind}',${idx})">➡️ Déplacer vers 🐷 Épargne</button>`;
+  const f=it.freq||'mensuel';
+  if(it.pay!=='souscompte' && FREQ[f]<12 && num(it.amount)>0)
+    return `💡 Facture ${FREQ_ADJ[f]} : ${CHF(num(it.amount))} partiront d'un coup du compte salaire. Choisissez « 🏦 Via sous-compte » pour la provisionner (${CHF(monthlyOf(it))}/mois) et la régler en entier depuis le sous-compte.`;
+  return '';
+}
+function refreshHint(kind,idx){
+  const h=document.getElementById('hint_'+kind+'_'+idx);
+  if(h) h.innerHTML=payHint(kind,idx);
+}
+function renderItems(kind){
+  const list=document.getElementById('list_'+kind);
+  list.innerHTML='';
+  const withPay = kind!=='epargne'; // l'épargne est toujours un virement vers le compte épargne
+  state[kind].forEach((it,idx)=>{
+    const div=document.createElement('div'); div.className='row '+(withPay?'pay':'ep');
+    const mensuel = monthlyOf(it);
+    div.innerHTML=`
+      <div class="full"><label>Libellé</label><input value="${esc(it.label)}" oninput="upd('${kind}',${idx},'label',this.value)" placeholder="${PLACEHOLDER[kind]||''}"></div>
+      <div><label>Montant (CHF)</label><input type="number" value="${it.amount}" oninput="upd('${kind}',${idx},'amount',this.value)"></div>
+      <div><label>Fréquence</label><select onchange="upd('${kind}',${idx},'freq',this.value)">${freqSelect(it.freq||'mensuel')}</select></div>
+      ${withPay?`<div class="paycell"><label>Paiement</label><select onchange="upd('${kind}',${idx},'pay',this.value)">${paySelect(it.pay)}</select></div>`:''}
+      <div class="delcell"><button class="del" onclick="delItem('${kind}',${idx})" title="Supprimer">✕</button><div class="badge-freq" id="badge_${kind}_${idx}" style="text-align:right;margin-top:4px">${CHF(mensuel)}/mois</div></div>
+      ${withPay?`<div class="row-hint" id="hint_${kind}_${idx}">${payHint(kind,idx)}</div>`:''}`;
+    list.appendChild(div);
+  });
+}
+function addItem(kind){
+  const it={label:"",amount:"",freq:"mensuel"};
+  if(kind==='fixes') it.pay='direct';
+  if(kind==='variables') it.pay='courant';
+  state[kind].push(it); renderItems(kind); calc();
+}
+function delItem(kind,idx){ state[kind].splice(idx,1); renderItems(kind); calc(); }
+function upd(kind,idx,field,val){
+  state[kind][idx][field]=val;
+  if(field==='amount'||field==='freq'){ // MAJ du seul badge, sans reconstruire la ligne (garde le focus)
+    const b=document.getElementById('badge_'+kind+'_'+idx);
+    if(b) b.textContent=CHF(monthlyOf(state[kind][idx]))+'/mois';
+  }
+  refreshHint(kind,idx);
+  calc();
+}
+function moveToEpargne(kind,idx){
+  const it=state[kind][idx];
+  if(!confirm(`Déplacer « ${it.label} » vers l'onglet 🐷 Épargne ?\nElle sera comptée comme épargne cash, et non plus comme une dépense.`))return;
+  state.epargne.push({label:it.label,amount:it.amount,freq:it.freq||'mensuel'});
+  state[kind].splice(idx,1);
+  renderItems(kind); renderItems('epargne'); calc();
+}
+
+/* =================== ASSURANCES =================== */
+function insTypeOptions(val){
+  return Object.entries(INS_TYPES).map(([k,v])=>`<option value="${k}" ${k===val?'selected':''}>${v.label}</option>`).join('');
+}
+function renderInsurances(){
+  const list=document.getElementById('list_assurances'); list.innerHTML='';
+  state.assurances.forEach((it,idx)=>{
+    const meta=INS_TYPES[it.type||'autre'];
+    const mensuel=monthlyOf(it);
+    const card=document.createElement('div'); card.className='ins-card';
+    card.innerHTML=`
+      <div class="row ins">
+        <div><label>Type</label><select onchange="updIns(${idx},'type',this.value)">${insTypeOptions(it.type||'autre')}</select></div>
+        <div><label>Compagnie</label><input value="${esc(it.company)}" oninput="updIns(${idx},'company',this.value)" placeholder="Ex. CSS, AXA…"></div>
+        <div><label>Prime (CHF)</label><input type="number" value="${it.amount}" oninput="updIns(${idx},'amount',this.value)"></div>
+        <div><label>Fréquence</label><select onchange="updIns(${idx},'freq',this.value)">${freqSelect(it.freq||'mensuel')}</select></div>
+        <div class="paycell"><label>Paiement</label><select onchange="updIns(${idx},'pay',this.value)">${paySelect(it.pay)}</select></div>
+        <div class="delcell"><button class="del" onclick="delIns(${idx})">✕</button></div>
+        <div class="row-hint" id="hint_assurances_${idx}">${payHint('assurances',idx)}</div>
+      </div>
+      <div class="small" style="margin-top:4px"><span class="pill blue" id="insbadge_${idx}">${CHF(mensuel)}/mois</span></div>
+      <div class="warn" style="margin-top:10px"><b>⏰ Délai de résiliation :</b> ${meta.notice}</div>
+      <div class="info" style="margin-top:8px"><b>💡 Optimisation :</b> ${meta.tip}
+        <div class="links" style="margin-top:8px">🔗 Comparer : ${meta.links.map(l=>`<a href="${l[1]}" target="_blank" rel="noopener">${l[0]} ↗</a>`).join(' ')}</div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+function addInsurance(){ state.assurances.push({type:"maladie_base",company:"",amount:"",freq:"mensuel",pay:"direct"}); renderInsurances(); calc(); }
+function delIns(idx){ state.assurances.splice(idx,1); renderInsurances(); calc(); }
+function updIns(idx,field,val){
+  state.assurances[idx][field]=val;
+  if(field==='type'){ renderInsurances(); } // le type change les conseils/liens → reconstruction OK (c'est un menu)
+  else if(field==='amount'||field==='freq'){ // MAJ du seul badge, garde le focus
+    const b=document.getElementById('insbadge_'+idx);
+    if(b) b.textContent=CHF(monthlyOf(state.assurances[idx]))+'/mois';
+  }
+  refreshHint('assurances',idx);
+  calc();
+}
+
+/* =================== 3e PILIER =================== */
+function renderPilier(){
+  const list=document.getElementById('list_pilier'); list.innerHTML='';
+  state.pilier.forEach((it,idx)=>{
+    const div=document.createElement('div'); div.className='row';
+    div.innerHTML=`
+      <div class="full"><label>Prestataire / banque</label><input value="${esc(it.label)}" oninput="updP(${idx},'label',this.value)" placeholder="Ex. VIAC, Frankly, Banque…"></div>
+      <div><label>Type</label><select onchange="updP(${idx},'kind',this.value)">
+        <option value="banque" ${it.kind==='banque'?'selected':''}>3a bancaire</option>
+        <option value="titres" ${it.kind==='titres'?'selected':''}>3a en titres / fonds</option>
+        <option value="assurance" ${it.kind==='assurance'?'selected':''}>3a assurance</option>
+      </select></div>
+      <div><label>Solde actuel (CHF)</label><input type="number" value="${it.balance}" oninput="updP(${idx},'balance',this.value)"></div>
+      <div><button class="del" onclick="delP(${idx})">✕</button></div>`;
+    list.appendChild(div);
+  });
+}
+function addPilier(){ state.pilier.push({label:"",kind:"titres",balance:""}); renderPilier(); calc(); }
+function delP(idx){ state.pilier.splice(idx,1); renderPilier(); calc(); }
+function updP(idx,f,v){ state.pilier[idx][f]=v; calc(); save(); }
+
+/* =================== COMPTES & FORTUNE =================== */
+function renderComptes(){
+  const list=document.getElementById('list_comptes'); list.innerHTML='';
+  state.comptes.forEach((it,idx)=>{
+    const div=document.createElement('div'); div.className='row';
+    div.innerHTML=`
+      <div class="full"><label>Nom</label><input value="${esc(it.label)}" oninput="updC(${idx},'label',this.value)" placeholder="Ex. Compte courant, épargne, dette…"></div>
+      <div><label>Catégorie</label><select onchange="updC(${idx},'cat',this.value)">
+        <option value="courant" ${it.cat==='courant'?'selected':''}>Compte courant</option>
+        <option value="epargne" ${it.cat==='epargne'?'selected':''}>Épargne</option>
+        <option value="placement" ${it.cat==='placement'?'selected':''}>Placements / titres</option>
+        <option value="autre" ${it.cat==='autre'?'selected':''}>Autre actif</option>
+        <option value="dette" ${it.cat==='dette'?'selected':''}>Dette / crédit</option>
+      </select></div>
+      <div><label>Montant (CHF)</label><input type="number" value="${it.balance}" oninput="updC(${idx},'balance',this.value)"></div>
+      <div><button class="del" onclick="delC(${idx})">✕</button></div>`;
+    list.appendChild(div);
+  });
+}
+function addCompte(){ state.comptes.push({label:"",cat:"courant",balance:""}); renderComptes(); calc(); }
+function delC(idx){ state.comptes.splice(idx,1); renderComptes(); calc(); }
+function updC(idx,f,v){ state.comptes[idx][f]=v; calc(); save(); }
+
+/* =================== IMPÔTS =================== */
+function buildCantonSelect(){
+  const s=document.getElementById('i_canton');
+  s.innerHTML=Object.entries(CANTONS).map(([k,v])=>`<option value="${k}">${v[0]} (${k})</option>`).join('');
+}
+function onCantonChange(){
+  const c=document.getElementById('i_canton').value;
+  document.getElementById('i_tauxCanton').value = CANTONS[c][1];
+  state.impots.tauxCanton = CANTONS[c][1];
+  calc();
+}
+// Impôt fédéral direct (barème art.36 LIFD, valeurs ~2024) — estimation
+function ifd(taxable, statut){
+  if(taxable<=0) return 0;
+  let b; // [seuil, impôt de base au seuil, taux marginal %]
+  if(statut==='couple'){
+    if(taxable>901800) return taxable*0.115;
+    b=[[0,0,0],[28800,0,1],[51400,226,2],[59000,378,3],[76100,891,4],[92400,1543,5],
+       [107600,2303,6],[121200,3119,7],[133400,3973,8],[143800,4805,9],[152500,5588,10],
+       [159700,6308,11],[165400,6935,12],[169700,7451,13]];
+  } else {
+    if(taxable>783200) return taxable*0.115;
+    b=[[0,0,0],[14800,0,0.77],[32200,134.05,0.88],[42200,222.05,2.64],[56200,591.65,2.97],
+       [73900,1117.30,5.94],[79600,1455.85,6.60],[105500,3165.25,8.80],[137300,5963.65,11.00],
+       [179400,10594.65,13.20]];
+  }
+  let r=b[0];
+  for(const row of b){ if(taxable>=row[0]) r=row; else break; }
+  return r[1] + (taxable-r[0])*r[2]/100;
+}
+function taxTotal(taxable, statut, tauxCC){
+  return ifd(taxable,statut) + Math.max(0,taxable)*tauxCC/100;
+}
+
+/* =================== EXPORT / IMPORT / SAVE =================== */
+const LS_KEY='budget_ch_v1';
+// Sauvegarde silencieuse dans le navigateur (mémoire de secours). Aucun clignotement :
+// l'indicateur reste statique. Le vrai fichier de sauvegarde se fait via « Exporter ».
+function save(){
+  pull(); // sync simple fields
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+function pull(){ // lire les champs simples dans state
+  state.revenus={brut:val('r_brut'),mois:val('r_mois'),prime:val('r_prime'),autres:val('r_autres'),
+    social:val('r_social'),netManuel:document.getElementById('r_netManuel').checked,netVal:val('r_netVal')};
+  state.pilierCfg={type:val('p_type'),plafond:val('p_plafond'),versement:val('p_versement'),pay:val('p_pay')};
+  state.impots={statut:val('i_statut'),canton:val('i_canton'),enfants:val('i_enfants'),
+    revenu:val('i_revenu'),deductions:val('i_deductions'),tauxCanton:val('i_tauxCanton'),pay:val('i_pay')};
+}
+function val(id){const e=document.getElementById(id); return e?e.value:"";}
+function push(){ // écrire state dans les champs
+  setV('r_brut',state.revenus.brut); setV('r_mois',state.revenus.mois); setV('r_prime',state.revenus.prime);
+  setV('r_autres',state.revenus.autres); setV('r_social',state.revenus.social);
+  document.getElementById('r_netManuel').checked=!!state.revenus.netManuel; setV('r_netVal',state.revenus.netVal);
+  setV('p_type',state.pilierCfg.type); setV('p_plafond',state.pilierCfg.plafond); setV('p_versement',state.pilierCfg.versement);
+  setV('p_pay',state.pilierCfg.pay);
+  setV('i_statut',state.impots.statut); setV('i_canton',state.impots.canton); setV('i_enfants',state.impots.enfants);
+  setV('i_revenu',state.impots.revenu); setV('i_deductions',state.impots.deductions);
+  setV('i_tauxCanton',state.impots.tauxCanton||CANTONS[state.impots.canton][1]);
+  setV('i_pay',state.impots.pay);
+  renderItems('fixes'); renderItems('variables'); renderInsurances(); renderItems('epargne'); renderPilier(); renderComptes();
+}
+function setV(id,v){const e=document.getElementById(id); if(e!=null)e.value=(v==null?"":v);}
+function exportData(){
+  pull();
+  const data=JSON.stringify(state,null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date().toISOString().slice(0,10);
+  a.href=url; a.download='mon-budget-suisse-'+d+'.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(ev){
+  const file=ev.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const obj=JSON.parse(e.target.result);
+      state=normalizeState(obj);
+      push(); calc(); save();
+      alert('✅ Données importées avec succès !');
+    }catch(err){ alert('❌ Fichier invalide : '+err.message); }
+  };
+  reader.readAsText(file);
+  ev.target.value='';
+}
+function resetAll(){
+  if(!confirm('Effacer toutes vos données et repartir de zéro ? Pensez à exporter avant si besoin.'))return;
+  state=blankState(); localStorage.removeItem(LS_KEY); push(); calc();
+}
+
+/* =================== CALCUL CENTRAL =================== */
+function calc(){
+  pull();
+  /* --- Revenus --- */
+  const brut=num(state.revenus.brut), mois=num(state.revenus.mois)||12, prime=num(state.revenus.prime), autres=num(state.revenus.autres);
+  const brutAnnuel = brut*mois + prime;
+  let netAnnuel, netMois, salaireVerse; // salaireVerse = ce qui arrive réellement chaque mois (sans 13ᵉ ni prime)
+  if(state.revenus.netManuel && num(state.revenus.netVal)>0){
+    netMois=num(state.revenus.netVal); netAnnuel=netMois*12; salaireVerse=netMois;
+  } else {
+    const social=num(state.revenus.social)/100;
+    netAnnuel = brutAnnuel*(1-social) + autres*12;
+    netMois = netAnnuel/12;
+    salaireVerse = brut*(1-social) + autres;
+  }
+  const extraAnnuel = Math.max(0, netAnnuel - salaireVerse*12); // 13ᵉ / 14ᵉ salaire et primes, nets
+  const cotis = brutAnnuel*(num(state.revenus.social)/100);
+  setText('o_brutAn',CHF(brutAnnuel));
+  setText('o_netAn',CHF(netAnnuel));
+  setText('o_netMois',CHF(netMois));
+  setText('o_cotis',CHF(cotis));
+
+  /* --- Totaux frais --- */
+  const totFixes=sumMonthly(state.fixes);
+  const totVar=sumMonthly(state.variables);
+  const totAss=sumMonthly(state.assurances);
+  const totCash=sumMonthly(state.epargne);
+  ['fixes','variables','assurances'].forEach(k=>{
+    const parts=Object.keys(PAY).map(p=>[p,sumMonthly(state[k].filter(i=>i.pay===p))]).filter(x=>x[1]>0);
+    document.getElementById(k+'_total').innerHTML='Total mensuel : <b>'+CHF(sumMonthly(state[k]))+'</b>'
+      + (parts.length?`<div class="split">dont ${parts.map(([p,v])=>`${PAY[p]} : <b>${CHF(v)}</b>`).join(' · ')}</div>`:'');
+  });
+  document.getElementById('epargne_total').innerHTML='Total mensuel : <b>'+CHF(totCash)+'</b> · soit <b>'+CHF(totCash*12)+'</b> par an';
+
+  /* --- Impôts --- */
+  const statut=state.impots.statut;
+  let revImp = num(state.impots.revenu)>0 ? num(state.impots.revenu) : netAnnuel;
+  const versement3a=Math.min(num(state.pilierCfg.versement), num(state.pilierCfg.plafond)||Infinity);
+  const enfants=num(state.impots.enfants);
+  const deducEnfants=enfants*6700; // déduction sociale indicative IFD ~6'700/enfant
+  const autresDe=num(state.impots.deductions);
+  const tauxCC=num(state.impots.tauxCanton||CANTONS[state.impots.canton][1]);
+  const taxable=Math.max(0, revImp - versement3a - deducEnfants - autresDe);
+  const tIFD=ifd(taxable,statut);
+  const tCC=taxable*tauxCC/100;
+  const tTot=tIFD+tCC;
+  const moyen = revImp>0 ? tTot/revImp*100 : 0;
+  setText('i_imposable',CHF(taxable));
+  setText('i_ifd',CHF(tIFD));
+  setText('i_cc',CHF(tCC));
+  setText('i_total',CHF(tTot));
+  setText('i_moyen',pct(moyen));
+  setText('i_mois',CHF(tTot/12));
+
+  /* --- 3a économie d'impôt (méthode différentielle) --- */
+  const taxableSans=Math.max(0, taxable+versement3a);
+  const eco = taxTotal(taxableSans,statut,tauxCC) - taxTotal(taxable,statut,tauxCC);
+  const marginal = versement3a>0 ? eco/versement3a*100 : 0;
+  const totalPilier=state.pilier.reduce((s,i)=>s+num(i.balance),0);
+  setText('p_economie', versement3a>0?CHF(eco):'CHF 0.–');
+  setText('p_marginal', versement3a>0?pct(marginal):'–');
+  setText('p_total',CHF(totalPilier));
+
+  /* --- Fortune --- */
+  let actifs=0,dettes=0;
+  state.comptes.forEach(c=>{ if(c.cat==='dette')dettes+=num(c.balance); else actifs+=num(c.balance); });
+  actifs+=totalPilier;
+  setText('f_actifs',CHF(actifs));
+  setText('f_dettes',CHF(dettes));
+  setText('f_nette',CHF(actifs-dettes));
+
+  /* --- Budget --- */
+  const impotsMois=tTot/12;
+  const epargne3aMois=versement3a/12;
+  const depensesMois=totFixes+totVar+totAss+impotsMois; // hors épargne
+  const reste=netMois-depensesMois-epargne3aMois-totCash;
+  const epargneTotale=totCash+epargne3aMois+Math.max(0,reste);
+  setText('b_revenu',CHF(netMois));
+  setText('b_depenses',CHF(depensesMois));
+  setText('b_cash',CHF(totCash));
+  setText('b_3a',CHF(epargne3aMois));
+  const resteCard=document.getElementById('b_resteCard');
+  resteCard.className='stat '+(reste>=0?'green':'red');
+  setText('b_reste',CHF(reste));
+
+  // table
+  const rows=[
+    ['🏠 Frais fixes',totFixes],['🛒 Frais variables',totVar],['🛡️ Assurances',totAss],
+    ['🧾 Impôts (provision)',impotsMois],['🐷 Épargne cash (compte épargne)',totCash],['🌳 Épargne 3ᵉ pilier',epargne3aMois],
+    ['💰 Reste / épargne libre',Math.max(0,reste)]
+  ];
+  const tb=document.getElementById('b_table');
+  tb.innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td class="num">${CHF(r[1])}</td><td class="num">${netMois>0?pct(r[1]/netMois*100):'–'}</td></tr>`).join('')
+    + `<tr class="total"><td>Total</td><td class="num">${CHF(rows.reduce((s,r)=>s+r[1],0))}</td><td class="num">${netMois>0?pct(rows.reduce((s,r)=>s+r[1],0)/netMois*100):'–'}</td></tr>`;
+
+  // barre
+  drawBar(netMois,{fixes:totFixes,var:totVar,ass:totAss,impots:impotsMois,cash:totCash,epargne:epargne3aMois,reste:Math.max(0,reste)});
+
+  // verdict
+  const vd=document.getElementById('b_verdict');
+  const detailEp=`🐷 cash ${CHF(totCash)} · 🌳 3a ${CHF(epargne3aMois)}${reste>0?' · 💰 reste '+CHF(reste):''}`;
+  if(netMois<=0){ vd.innerHTML='<div class="warn">Renseignez d\'abord vos revenus dans l\'onglet 💰 Revenus.</div>'; }
+  else if(reste<0){ vd.innerHTML=`<div class="warn">⚠️ Votre budget est <b>déficitaire de ${CHF(-reste)}/mois</b>. Pistes : comparer vos assurances (onglet 🛡️), réduire certains frais variables, ou ajuster votre épargne (cash ou 3a). Visez d'abord l'équilibre.</div>`; }
+  else if(epargneTotale/netMois<0.1){ vd.innerHTML=`<div class="warn">🟠 Vous êtes à l'équilibre mais vous épargnez peu (<b>${pct(epargneTotale/netMois*100)}</b> du revenu : ${detailEp}). Essayez d'atteindre au moins 10–15 %.</div>`; }
+  else { vd.innerHTML=`<div class="info">✅ Bravo ! Vous finissez le mois en positif et vous épargnez <b>${CHF(epargneTotale)}/mois</b> (${pct(epargneTotale/netMois*100)} du revenu : ${detailEp}). ${reste>0?'Pensez à virer le « reste » sur le compte épargne ou en 3a dès le début du mois.':''}</div>`; }
+
+  // modèles
+  renderModels(netMois,{needs:totFixes+totAss+impotsMois, wants:totVar, savings:totCash+epargne3aMois+Math.max(0,reste)});
+
+  /* --- Épargne (vue d'ensemble) --- */
+  setText('e_cashMois',CHF(totCash));
+  setText('e_3aMois',CHF(epargne3aMois));
+  setText('e_totalAn',CHF((totCash+epargne3aMois)*12));
+  setText('e_taux',netMois>0?pct((totCash+epargne3aMois)/netMois*100):'–');
+  const soldeEpargne=state.comptes.filter(c=>c.cat==='epargne').reduce((s,c)=>s+num(c.balance),0);
+  renderReserve(soldeEpargne,depensesMois,totCash,reste);
+
+  /* --- Jour de paie --- */
+  renderPaie({salaireVerse,extraAnnuel,mois,prime,tTot,versement3a});
+
+  save0();
+}
+function sumMonthly(list){ return list.reduce((s,i)=>s+monthlyOf(i),0); }
+
+/* =================== ÉPARGNE : RÉSERVE DE SÉCURITÉ =================== */
+function renderReserve(solde,depensesMois,cashMois,reste){
+  const el=document.getElementById('e_reserve');
+  let h='';
+  if(solde<=0){
+    h=`<div class="info">💡 Indiquez le solde de votre compte épargne dans l'onglet <a href="#" onclick="goTab('fortune');return false">🏦 Comptes & Fortune</a> (catégorie « Épargne ») pour voir combien de mois de dépenses il couvre.</div>`;
+  } else if(depensesMois>0){
+    const moisCouverts=solde/depensesMois;
+    const cible3=depensesMois*3, cible6=depensesMois*6;
+    let suite='';
+    if(moisCouverts<3 && cashMois>0) suite=` À ${CHF(cashMois)}/mois, vous atteindrez 3 mois de réserve dans environ <b>${Math.ceil((cible3-solde)/cashMois)} mois</b>.`;
+    h=`<div class="${moisCouverts<3?'warn':'info'}">🛟 Votre épargne cash actuelle (${CHF(solde)}) couvre <b>${moisCouverts.toLocaleString('fr-CH',{maximumFractionDigits:1})} mois</b> de dépenses. Objectif conseillé pour une réserve de sécurité : 3 à 6 mois, soit ${CHF(cible3)} à ${CHF(cible6)}.${suite}</div>`;
+  }
+  if(reste>0) h+=`<p class="small muted">💰 Le budget laisse aussi un reste de ${CHF(reste)}/mois (onglet ⚖️ Budget) : vous pouvez l'ajouter à votre virement d'épargne.</p>`;
+  el.innerHTML=h;
+}
+
+/* =================== JOUR DE PAIE =================== */
+// Rassemble toutes les charges avec leur mode de paiement, puis construit le plan du jour de paie.
+function renderPaie({salaireVerse,extraAnnuel,mois,prime,tTot,versement3a}){
+  const lignes=[];
+  const addL=(icon,label,it)=>lignes.push({icon,label,amount:num(it.amount),freq:it.freq||'mensuel',pay:it.pay,mensuel:monthlyOf(it)});
+  state.fixes.forEach(it=>addL('🏠',it.label||'(sans nom)',it));
+  state.variables.forEach(it=>addL('🛒',it.label||'(sans nom)',it));
+  state.assurances.forEach(it=>addL('🛡️',INS_TYPES[it.type||'autre'].label+(it.company?' — '+it.company:''),it));
+  if(tTot>0) lignes.push({icon:'🧾',label:state.impots.pay==='direct'?'Impôts (acomptes)':'Impôts (IFD + canton/commune)',amount:tTot,freq:'annuel',pay:state.impots.pay,mensuel:tTot/12});
+  if(versement3a>0 && state.pilierCfg.pay==='souscompte')
+    lignes.push({icon:'🌳',label:'Versement 3ᵉ pilier (versé en une fois)',amount:versement3a,freq:'annuel',pay:'souscompte',mensuel:versement3a/12});
+  const grp=p=>lignes.filter(l=>l.pay===p && l.mensuel>0);
+  const direct=grp('direct'), sous=grp('souscompte'), courant=grp('courant');
+  const tot=a=>a.reduce((s,l)=>s+l.mensuel,0);
+  const tDirect=tot(direct), tSous=tot(sous), tCourant=tot(courant);
+  const epargnes=state.epargne.filter(e=>monthlyOf(e)>0);
+  const tCash=sumMonthly(epargnes);
+  const v3a = state.pilierCfg.pay==='souscompte' ? 0 : versement3a/12;
+
+  setText('pa_direct',CHF(tDirect));
+  setText('pa_sous',CHF(tSous));
+  setText('pa_cash',CHF(tCash));
+  setText('pa_3a', state.pilierCfg.pay==='souscompte' && versement3a>0 ? 'via sous-compte' : CHF(v3a));
+
+  // Cascade : salaire → prélèvements → virements → dépenses du mois
+  let solde=salaireVerse;
+  const step=(lbl,montant,cls='')=>{ solde+=montant; return `<tr class="${cls}"><td>${lbl}</td><td class="num ${montant<0?'neg':'pos'}">${signed(montant)}</td><td class="num">${CHF(solde)}</td></tr>`; };
+  let f=`<tr><td>💰 Salaire net reçu${extraAnnuel>0?' <span class="small muted">(mois normal, sans 13ᵉ ni prime)</span>':''}</td><td class="num pos">${signed(salaireVerse)}</td><td class="num">${CHF(solde)}</td></tr>`;
+  f+=step(`⚡ Prélèvements directs <span class="small muted">(${direct.length})</span>`,-tDirect);
+  f+=step(`🏦 Virement → sous-compte charges <span class="small muted">(${sous.length} facture${sous.length>1?'s':''})</span>`,-tSous);
+  f+=step(`🐷 Virement → compte épargne`,-tCash);
+  if(state.pilierCfg.pay==='souscompte' && versement3a>0) f+=`<tr><td>🌳 Virement → 3ᵉ pilier <span class="small muted">(inclus dans le sous-compte)</span></td><td class="num">—</td><td class="num">${CHF(solde)}</td></tr>`;
+  else f+=step(`🌳 Virement → 3ᵉ pilier`,-v3a);
+  const dispo=solde;
+  f+=`<tr class="sub"><td>= Disponible pour le mois</td><td class="num"></td><td class="num">${CHF(dispo)}</td></tr>`;
+  f+=step(`💳 Dépenses au fil du mois <span class="small muted">(${courant.length})</span>`,-tCourant);
+  const marge=solde;
+  f+=`<tr class="total ${marge>=0?'pos':'neg'}"><td>= Marge en fin de mois</td><td class="num"></td><td class="num">${CHF(marge)}</td></tr>`;
+  document.getElementById('pa_flow').innerHTML=f;
+  document.getElementById('pa_margeCard').className='stat '+(marge>=0?'green':'red');
+  setText('pa_marge',CHF(marge));
+
+  // 13ᵉ salaire / primes : versés à part, donc hors de la cascade ci-dessus
+  const quoi=[mois>13?'13ᵉ et 14ᵉ salaires':(mois>12?'13ᵉ salaire':''), prime>0?'prime':''].filter(Boolean).join(' + ');
+  let h='';
+  if(salaireVerse<=0) h=`<div class="warn">Renseignez d'abord vos revenus dans l'onglet 💰 Revenus.</div>`;
+  else if(extraAnnuel>0){
+    if(marge>=0) h=`<div class="info">🎁 Votre ${quoi} (≈ <b>${CHF(extraAnnuel)}</b> net par an) arrive en plus, à part : il n'est pas compté ci-dessus. Idéal pour renforcer l'épargne, compléter le 3a ou constituer un coussin sur le sous-compte.</div>`;
+    else if(marge*12+extraAnnuel>=0) h=`<div class="warn">🟠 Les mois « normaux », il manque <b>${CHF(-marge)}</b>. Sur l'année, votre ${quoi} (≈ ${CHF(extraAnnuel)} net) compense ce manque (${CHF(-marge*12)}) et il reste ensuite ${CHF(marge*12+extraAnnuel)}. En attendant qu'il arrive, gardez une réserve sur le compte salaire, ou réduisez un peu un virement.</div>`;
+    else h=`<div class="warn">⚠️ Même avec votre ${quoi}, il manque environ <b>${CHF(-(marge*12+extraAnnuel))}</b> par an. Voir les pistes dans l'onglet ⚖️ Budget.</div>`;
+  } else if(marge<0) h=`<div class="warn">⚠️ Il manque <b>${CHF(-marge)}</b> chaque mois : réduisez une dépense ou un virement d'épargne. Voir les pistes dans l'onglet ⚖️ Budget.</div>`;
+  else if(marge>0) h=`<div class="info">✅ Il vous reste ${CHF(marge)} en fin de mois. Vous pouvez l'ajouter au virement d'épargne ou le garder comme marge de sécurité.</div>`;
+  document.getElementById('pa_13').innerHTML=h;
+
+  // Ordres permanents
+  let o='';
+  if(tSous>0) o+=`<tr><td>🏦 Sous-compte charges</td><td class="num"><b>${CHF(tSous)}</b></td><td class="small">${sous.map(l=>esc(l.label)).join(', ')}</td></tr>`;
+  epargnes.forEach(e=>{ o+=`<tr><td>🐷 ${esc(e.label||'Compte épargne')}</td><td class="num"><b>${CHF(monthlyOf(e))}</b></td><td class="small">Épargne cash — on n'y touche pas</td></tr>`; });
+  if(v3a>0) o+=`<tr><td>🌳 Compte 3ᵉ pilier</td><td class="num"><b>${CHF(v3a)}</b></td><td class="small">Versement 3a (${CHF(versement3a)} / an)</td></tr>`;
+  if(!o) o=`<tr><td colspan="3" class="muted">Aucun virement à programmer pour l'instant : choisissez « 🏦 Via sous-compte » sur vos factures non mensuelles et ajoutez votre épargne dans l'onglet 🐷 Épargne.</td></tr>`;
+  else o+=`<tr class="total"><td>Total des virements</td><td class="num">${CHF(tSous+tCash+v3a)}</td><td></td></tr>`;
+  document.getElementById('pa_ordres').innerHTML=o;
+  document.getElementById('pa_ordresTip').innerHTML = tSous>0
+    ? `<div class="info">💡 Arrondissez le virement vers le sous-compte à la dizaine supérieure (ex. <b>${CHF(Math.ceil(tSous/10)*10)}</b>) pour garder une petite marge.</div>` : '';
+
+  // Tableaux détaillés
+  const vide=msg=>`<p class="muted small">${msg}</p>`;
+  document.getElementById('pa_directTbl').innerHTML = direct.length ? `<table>
+      <thead><tr><th>Poste</th><th>Fréquence</th><th class="num">CHF / mois</th></tr></thead>
+      <tbody>${direct.map(l=>`<tr><td>${l.icon} ${esc(l.label)}</td><td>${FREQ_LABEL[l.freq]}${FREQ[l.freq]<12?' <span class="pill orange">débité d\'un coup</span>':''}</td><td class="num">${CHF(l.mensuel)}</td></tr>`).join('')}
+      <tr class="total"><td>Total prélevé directement</td><td></td><td class="num">${CHF(tDirect)}</td></tr></tbody></table>`
+    : vide('Aucune charge en « ⚡ Prélevé directement ». Choisissez ce mode dans les onglets Frais fixes, Frais variables et Assurances.');
+  document.getElementById('pa_sousTbl').innerHTML = sous.length ? `<table>
+      <thead><tr><th>Facture</th><th class="num">Montant à payer</th><th class="num">Provision / mois</th></tr></thead>
+      <tbody>${sous.map(l=>`<tr><td>${l.icon} ${esc(l.label)}</td><td class="num">${CHF(l.amount)}<div class="small muted">${FREQ_LABEL[l.freq]}</div></td><td class="num">${CHF(l.mensuel)}</td></tr>`).join('')}
+      <tr class="total"><td>À virer chaque mois sur le sous-compte</td><td></td><td class="num">${CHF(tSous)}</td></tr></tbody></table>`
+    : vide('Aucune charge en « 🏦 Via sous-compte ». Choisissez ce mode pour les factures trimestrielles, semestrielles ou annuelles.');
+  const grosse=sous.filter(l=>FREQ[l.freq]<12).sort((a,b)=>b.amount-a.amount)[0];
+  document.getElementById('pa_sousTip').innerHTML = grosse
+    ? `<div class="info">💡 <b>Au démarrage</b>, la provision n'a pas encore eu le temps de s'accumuler : si une facture tombe bientôt, alimentez le sous-compte une fois avec un coussin (par ex. avec le 13ᵉ salaire). Votre plus grosse facture : <b>${esc(grosse.label)}</b> (${CHF(grosse.amount)}).</div>` : '';
+  document.getElementById('pa_courantTbl').innerHTML = courant.length ? `<table>
+      <thead><tr><th>Poste</th><th class="num">CHF / mois</th></tr></thead>
+      <tbody>${courant.map(l=>`<tr><td>${l.icon} ${esc(l.label)}</td><td class="num">${CHF(l.mensuel)}</td></tr>`).join('')}
+      <tr class="total"><td>Budget du mois</td><td class="num">${CHF(tCourant)}</td></tr></tbody></table>`
+    : vide('Aucune dépense « 💳 Au fil du mois ».');
+}
+function save0(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function setText(id,v){const e=document.getElementById(id); if(e)e.textContent=v;}
+function esc(s){return (s||"").replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function drawBar(total,seg){
+  const bar=document.getElementById('b_bar');
+  if(total<=0){bar.innerHTML='';document.getElementById('b_legend').textContent='';return;}
+  const colors={fixes:'#d52b1e',var:'#e08c00',ass:'#7c3aed',impots:'#475569',cash:'#2563eb',epargne:'#1f9d55',reste:'#10b981'};
+  const labels={fixes:'Fixes',var:'Variables',ass:'Assurances',impots:'Impôts',cash:'Épargne cash',epargne:'3a',reste:'Reste'};
+  let html='';
+  Object.keys(seg).forEach(k=>{
+    const w=Math.max(0,seg[k])/total*100;
+    if(w>0.5)html+=`<div class="bar-seg" style="width:${w}%;background:${colors[k]}" title="${labels[k]}: ${CHF(seg[k])}">${w>7?Math.round(w)+'%':''}</div>`;
+  });
+  bar.innerHTML=html;
+  document.getElementById('b_legend').innerHTML=Object.keys(seg).map(k=>`<span style="display:inline-block;margin-right:14px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colors[k]};margin-right:4px"></span>${labels[k]}</span>`).join('');
+}
+
+/* =================== MODÈLES DE BUDGET =================== */
+const MODELS=[
+  {id:'503020',name:'Équilibré 50 / 30 / 20',needs:50,wants:30,savings:20,desc:'La règle classique : 50 % besoins, 30 % envies, 20 % épargne. Bon point de départ pour la plupart des situations.'},
+  {id:'602020',name:'Prudent 60 / 20 / 20',needs:60,wants:20,savings:20,desc:'Pour les revenus plus serrés ou les loyers élevés (villes chères). Garde 20 % d\'épargne malgré des besoins importants.'},
+  {id:'502030',name:'Épargne ambitieuse 50 / 20 / 30',needs:50,wants:20,savings:30,desc:'Pour accélérer la constitution d\'un capital (achat immobilier, indépendance financière). Épargne renforcée à 30 %.'},
+  {id:'703000',name:'Survie 70 / 25 / 5',needs:70,wants:25,savings:5,desc:'Budget de transition quand le revenu est très tendu. Objectif : tenir et épargner un minimum, en attendant une amélioration.'}
+];
+function renderModels(netMois, actual){
+  const wrap=document.getElementById('b_models'); wrap.innerHTML='';
+  MODELS.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='model'+(state.budgetModel===m.id?' sel':'');
+    d.innerHTML=`<h3>${m.name}</h3><div class="pct">Besoins ${m.needs}% · Envies ${m.wants}% · Épargne ${m.savings}%</div>`;
+    d.onclick=()=>{state.budgetModel=m.id; renderModels(netMois,actual); save0();};
+    wrap.appendChild(d);
+  });
+  const m=MODELS.find(x=>x.id===state.budgetModel)||MODELS[0];
+  const det=document.getElementById('b_modelDetail');
+  if(netMois<=0){det.innerHTML='';return;}
+  const aNeeds=actual.needs/netMois*100, aWants=actual.wants/netMois*100, aSav=actual.savings/netMois*100;
+  function line(lbl,cible,reel,cibleChf){
+    const ok=Math.abs(reel-cible)<=5;
+    const over=reel>cible;
+    const pillCls = lbl.startsWith('Épargne') ? (reel>=cible?'green':'orange') : (reel<=cible?'green':'red');
+    return `<tr><td>${lbl}</td><td class="num">${pct(cible)}</td><td class="num">${CHF(cibleChf)}</td>
+      <td class="num">${pct(reel)}</td><td class="num"><span class="pill ${pillCls}">${reel>cible?'+':''}${pct(reel-cible)}</span></td></tr>`;
+  }
+  det.innerHTML=`
+    <div class="info">${m.desc}</div>
+    <table>
+      <thead><tr><th>Catégorie</th><th class="num">Cible %</th><th class="num">Cible CHF/mois</th><th class="num">Votre réel %</th><th class="num">Écart</th></tr></thead>
+      <tbody>
+        ${line('Besoins (fixes + assurances + impôts)',m.needs,aNeeds,netMois*m.needs/100)}
+        ${line('Envies (frais variables)',m.wants,aWants,netMois*m.wants/100)}
+        ${line('Épargne (cash + 3a + reste)',m.savings,aSav,netMois*m.savings/100)}
+      </tbody>
+    </table>
+    ${modelAdvice(m,aNeeds,aWants,aSav,netMois)}`;
+}
+function modelAdvice(m,n,w,s,net){
+  let msgs=[];
+  if(n>m.needs+5) msgs.push(`Vos <b>besoins</b> dépassent la cible de ${pct(n-m.needs)}. Loyer trop lourd ? Comparez vos assurances (onglet 🛡️) — c'est souvent là qu'on récupère le plus vite.`);
+  if(w>m.wants+5) msgs.push(`Vos <b>envies</b> dépassent la cible de ${pct(w-m.wants)}. Repérez 2–3 postes variables à réduire sans vous priver totalement.`);
+  if(s<m.savings-5) msgs.push(`Votre <b>épargne</b> est sous la cible. Astuce : virez automatiquement ${CHF(net*m.savings/100)} en début de mois (compte épargne + 3a) — « payez-vous d'abord ».`);
+  if(!msgs.length) return `<div class="info">🎉 Votre répartition colle bien à ce modèle. Continuez ainsi !</div>`;
+  return `<div class="warn">${msgs.map(x=>'• '+x).join('<br>')}</div>`;
+}
+
+/* =================== EXEMPLE DE DÉMONSTRATION =================== */
+// Profil cohérent et équilibré (personne seule, Suisse romande) — finit en positif
+// avec ~20 % d'épargne. Sert de point de départ : l'utilisateur n'a plus qu'à adapter.
+function exampleState(){
+  const s=blankState();
+  s.revenus={brut:"6200",mois:"13",prime:"",autres:"",social:"13",netManuel:false,netVal:""};
+  s.fixes=[
+    {label:"Loyer (charges comprises)",amount:"1600",freq:"mensuel",pay:"direct"},
+    {label:"Électricité",amount:"180",freq:"trimestriel",pay:"souscompte"},
+    {label:"Internet / TV (box)",amount:"70",freq:"mensuel",pay:"direct"},
+    {label:"Abonnement mobile",amount:"40",freq:"mensuel",pay:"direct"},
+    {label:"Serafe (redevance radio-TV)",amount:"335",freq:"annuel",pay:"souscompte"},
+    {label:"Abonnement transports publics",amount:"75",freq:"mensuel",pay:"direct"},
+    {label:"Abonnement fitness",amount:"80",freq:"mensuel",pay:"direct"},
+    {label:"Streaming (Netflix, Spotify…)",amount:"30",freq:"mensuel",pay:"direct"}
+  ];
+  s.variables=[
+    {label:"Courses alimentaires",amount:"500",freq:"mensuel",pay:"courant"},
+    {label:"Restaurants / sorties",amount:"250",freq:"mensuel",pay:"courant"},
+    {label:"Loisirs / shopping / habits",amount:"150",freq:"mensuel",pay:"courant"},
+    {label:"Essence / mobilité",amount:"120",freq:"mensuel",pay:"courant"},
+    {label:"Santé (pharmacie, franchise)",amount:"80",freq:"mensuel",pay:"courant"},
+    {label:"Provision vacances",amount:"200",freq:"mensuel",pay:"souscompte"}
+  ];
+  s.assurances=[
+    {type:"maladie_base",company:"Ex. CSS / Assura",amount:"350",freq:"mensuel",pay:"direct"},
+    {type:"maladie_compl",company:"Ex. complémentaire",amount:"60",freq:"mensuel",pay:"direct"},
+    {type:"menage_rc",company:"Ex. AXA / Mobilière",amount:"420",freq:"annuel",pay:"souscompte"},
+    {type:"voiture",company:"Ex. TCS / Zurich",amount:"1080",freq:"annuel",pay:"souscompte"}
+  ];
+  s.epargne=[
+    {label:"Compte épargne (on n'y touche pas)",amount:"250",freq:"mensuel"}
+  ];
+  s.pilierCfg={type:"caisse",plafond:"7258",versement:"7258",pay:"direct"};
+  s.pilier=[{label:"Ex. VIAC / Frankly",kind:"titres",balance:"12000"}];
+  s.comptes=[
+    {label:"Compte courant",cat:"courant",balance:"4500"},
+    {label:"Compte épargne",cat:"epargne",balance:"15000"},
+    {label:"Placements / titres",cat:"placement",balance:"8000"},
+    {label:"Leasing / crédit voiture",cat:"dette",balance:"6000"}
+  ];
+  s.impots={statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:String(CANTONS.VD[1]),pay:"souscompte"};
+  s.budgetModel="503020";
+  return s;
+}
+function loadExample(){
+  if(!confirm("Charger l'exemple de démonstration ?\n\n⚠️ Cela REMPLACERA vos données actuelles. Exportez-les d'abord si vous voulez les garder."))return;
+  state=exampleState(); push(); calc(); save();
+  alert("✅ Exemple chargé ! Adaptez chaque case à votre situation.");
+}
+
+/* =================== INIT =================== */
+function init(){
+  buildTabs();
+  buildCantonSelect();
+  const saved=localStorage.getItem(LS_KEY);
+  if(saved){ try{ state=normalizeState(JSON.parse(saved)); }catch(e){ state=exampleState(); } }
+  else { state=exampleState(); } // 1re ouverture : on pré-remplit avec l'exemple
+  push();
+  if(!state.impots.tauxCanton) document.getElementById('i_tauxCanton').value=CANTONS[state.impots.canton][1];
+  calc();
+}
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

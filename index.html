@@ -65,8 +65,12 @@
   .row.pay{grid-template-columns:1.8fr 1fr 1.1fr 1.4fr 110px}
   .row.ep{grid-template-columns:2fr 1.2fr 1.3fr 110px}
   .row.ins{grid-template-columns:1.3fr 1.2fr .9fr 1fr 1.3fr auto}
-  @media(max-width:720px){.row,.row.pay,.row.ep,.row.ins{grid-template-columns:1fr 1fr;}.row .full,.row .paycell{grid-column:1/-1}
+  .row.obj{grid-template-columns:1.6fr 1fr 1fr 1fr auto}
+  @media(max-width:720px){.row,.row.pay,.row.ep,.row.ins,.row.obj{grid-template-columns:1fr 1fr;}.row .full,.row .paycell{grid-column:1/-1}
     .row.pay .delcell,.row.ins .delcell{grid-column:1/-1;display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center}}
+  .obj-out{grid-column:1/-1;font-size:13px}
+  .prog{height:10px;background:var(--bg);border-radius:6px;overflow:hidden;margin:4px 0 6px}
+  .prog>div{height:100%;background:var(--vert);border-radius:6px;transition:width .3s}
   .row-hint{grid-column:1/-1;font-size:12.5px;background:var(--orange-bg);color:#92520a;border-radius:8px;padding:7px 10px}
   .row-hint:empty{display:none}
   .row-hint button{padding:3px 9px;font-size:12px;margin-left:6px;background:#fff;border:1px solid #f5d9a8;color:#92520a}
@@ -520,6 +524,26 @@
     <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> Montants avant impôts, exprimés <b>en francs d'aujourd'hui</b> (inflation supposée de 1 % par an, rendements diminués d'autant). La rente AVS réelle dépend de tout votre parcours (bonifications pour tâches éducatives, splitting en cas de mariage…). Les valeurs légales utilisées sont celles de <span class="annee-legale"></span>. Pour un calcul officiel : estimation de rente auprès de votre caisse AVS et certificat de votre caisse de pension.</div>
   </section>
 
+  <!-- ============ OBJECTIFS DE VIE ============ -->
+  <section class="tab-page" data-tab="objectifs">
+    <div class="card">
+      <h2>🎯 Vos objectifs de vie</h2>
+      <p class="sub">Voyage, voiture, achat immobilier, études des enfants… Pour chaque objectif : le montant à atteindre, la date et ce que vous avez déjà mis de côté.</p>
+      <div id="list_objectifs"></div>
+      <button class="add-btn" onclick="addObjectif()">+ Ajouter un objectif</button>
+    </div>
+    <div class="card">
+      <h2>📊 Est-ce atteignable avec votre budget ?</h2>
+      <div class="grid g3">
+        <div class="stat"><div class="lbl">Épargne nécessaire / mois</div><div class="val" id="obj_total">–</div></div>
+        <div class="stat" id="obj_margeCard"><div class="lbl">Marge du budget / mois</div><div class="val" id="obj_marge">–</div></div>
+        <div class="stat"><div class="lbl">Objectifs atteignables</div><div class="val" id="obj_nb">–</div></div>
+      </div>
+      <div id="obj_note"></div>
+    </div>
+    <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> L'épargne nécessaire est calculée sans intérêts ni inflation. La marge est le « reste à la fin du mois » de l'onglet ⚖️ Budget, attribuée aux objectifs dans l'ordre de leurs dates.</div>
+  </section>
+
   <!-- ============ COMPTES & FORTUNE ============ -->
   <section class="tab-page" data-tab="fortune">
     <div class="card">
@@ -887,6 +911,7 @@ function blankState(){
   return {
     revenus:{brut:"",mois:"12",prime:"",autres:"",social:"13",netManuel:false,netVal:""},
     fixes:[], variables:[], assurances:[], epargne:[], pilier:[], comptes:[],
+    objectifs:[],                       // [{nom, cible, date:'AAAA-MM', deja}]
     pilierCfg:{type:"caisse",plafond:String(LEGAL.pilier3a.avecCaisse),versement:"",pay:"direct"},
     impots:{statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:"",pay:"souscompte",marginal:""},
     budgetModel:"503020",
@@ -910,7 +935,7 @@ function normalizeState(s){
   s=Object.assign(b,s||{});
   ['revenus','pilierCfg','impots','strategie',...Object.keys(FIELDS)].forEach(k=>{ s[k]=Object.assign(blankState()[k], s[k]||{}); });
   s.profil = (s.profil && typeof s.profil==='object') ? Object.assign({},s.profil) : {};
-  ['fixes','variables','assurances','epargne','pilier','comptes'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ['fixes','variables','assurances','epargne','pilier','comptes','objectifs'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   // Anciennes données sans mode de paiement : mensuel → prélevé directement, sinon → sous-compte
   const mensuel = it => FREQ[it.freq||'mensuel']>=12;
   s.fixes.forEach(it=>{ if(!PAY[it.pay]) it.pay = mensuel(it)?'direct':'souscompte'; });
@@ -930,6 +955,7 @@ const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["vari
   ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],
   ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],
   ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],["retraite","🏖️ Retraite",3],
+  ["objectifs","🎯 Objectifs de vie",4],
   ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6]];
 const lastTab = {}; // dernier onglet ouvert dans chaque étape
 function buildTabs(){
@@ -1316,6 +1342,70 @@ function renderRetraite(C){
     <p class="small muted">Leviers possibles : versements 3a au maximum, rachat LPP (onglet 🏛️ 2ᵉ pilier), placements réguliers, retraite plus tardive, ou capitaux consommés sur moins d'années.</p>`;
 }
 
+/* =================== OBJECTIFS DE VIE =================== */
+// Date « AAAA-MM » (ou « MM.AAAA ») → nombre de mois restants depuis le mois actuel (null si illisible)
+function moisRestants(d){
+  const m=String(d||'').trim().match(/^(\d{4})-(\d{1,2})$/)||String(d||'').trim().match(/^(\d{1,2})[./](\d{4})$/);
+  if(!m) return null;
+  const [y,mo] = m[1].length===4 ? [+m[1],+m[2]] : [+m[2],+m[1]];
+  const now=new Date(); return (y-now.getFullYear())*12+(mo-(now.getMonth()+1));
+}
+function renderObjectifs(){
+  const list=document.getElementById('list_objectifs'); list.innerHTML='';
+  state.objectifs.forEach((o,idx)=>{
+    const div=document.createElement('div'); div.className='row obj';
+    div.innerHTML=`
+      <div class="full"><label>Objectif</label><input value="${esc(o.nom)}" oninput="updObj(${idx},'nom',this.value)" placeholder="Ex. Voyage, voiture, apport immobilier…"></div>
+      <div><label>Montant à atteindre (CHF)</label><input type="number" value="${esc(o.cible)}" oninput="updObj(${idx},'cible',this.value)"></div>
+      <div><label>Pour quand ?</label><input type="month" value="${esc(o.date)}" placeholder="AAAA-MM" oninput="updObj(${idx},'date',this.value)"></div>
+      <div><label>Déjà épargné (CHF)</label><input type="number" value="${esc(o.deja)}" oninput="updObj(${idx},'deja',this.value)"></div>
+      <div><button class="del" onclick="delObj(${idx})" title="Supprimer">✕</button></div>
+      <div class="obj-out" id="obj_out_${idx}"></div>`;
+    list.appendChild(div);
+  });
+}
+function addObjectif(){ state.objectifs.push({nom:"",cible:"",date:"",deja:""}); renderObjectifs(); calc(); }
+function delObj(idx){ state.objectifs.splice(idx,1); renderObjectifs(); calc(); }
+function updObj(idx,f,v){ state.objectifs[idx][f]=v; calc(); }
+// Calcul : épargne mensuelle de chaque objectif, puis attribution de la marge dans l'ordre des dates
+function computeObjectifs(C){
+  const marge=Math.max(0,C.reste);
+  const res=state.objectifs.map((o,idx)=>{
+    const cible=num(o.cible), deja=num(o.deja), reste=Math.max(0,cible-deja), mois=moisRestants(o.date);
+    const atteint = cible>0 && deja>=cible;
+    const mensuel = atteint||reste===0 ? 0 : (mois!=null && mois>0 ? reste/mois : null);
+    return {idx,nom:o.nom||'(sans nom)',cible,deja,reste,mois,atteint,mensuel,progres:cible>0?Math.min(100,deja/cible*100):0};
+  });
+  let cumul=0;
+  res.filter(r=>r.mensuel!=null&&r.mensuel>0).sort((a,b)=>a.mois-b.mois).forEach(r=>{ cumul+=r.mensuel; r.atteignable=cumul<=marge+0.5; r.manque=Math.max(0,cumul-marge); });
+  const total=res.reduce((s,r)=>s+(r.mensuel||0),0);
+  return {res,marge,total};
+}
+function renderObjectifsOut(C){
+  const O=C.objectifs;
+  O.res.forEach(r=>{
+    const el=document.getElementById('obj_out_'+r.idx); if(!el) return;
+    let etat;
+    if(!r.cible) etat='<span class="muted">Indiquez un montant à atteindre.</span>';
+    else if(r.atteint) etat='<span class="pill green">✅ Atteint</span>';
+    else if(r.mois==null) etat='<span class="muted">Indiquez une date (AAAA-MM) pour calculer l\'épargne nécessaire.</span>';
+    else if(r.mois<=0) etat=`<span class="pill red">Échéance passée</span> il manquait ${CHF(r.reste)}.`;
+    else etat=`Épargne nécessaire : <b>${CHF(r.mensuel)}/mois</b> pendant ${r.mois} mois · `
+      + (r.atteignable ? '<span class="pill green">Atteignable avec la marge actuelle</span>' : `<span class="pill orange">Pas atteignable avec la marge actuelle</span> <span class="muted">(il manque ${CHF(r.manque)}/mois en comptant les objectifs plus proches)</span>`);
+    el.innerHTML=`<div class="prog"><div style="width:${r.progres}%"></div></div>${r.cible?`<b>${Math.round(r.progres)} %</b> · ${CHF(r.deja)} sur ${CHF(r.cible)} · `:''}${etat}`;
+  });
+  setText('obj_total',CHF(O.total)); setText('obj_marge',CHF(O.marge));
+  document.getElementById('obj_margeCard').className='stat'+(O.marge>=O.total&&O.total>0?' green':'');
+  const actifs=O.res.filter(r=>r.mensuel>0), ok=actifs.filter(r=>r.atteignable).length;
+  setText('obj_nb', actifs.length?`${ok} / ${actifs.length}`:'–');
+  let n='';
+  if(!state.objectifs.length) n='<div class="info">Ajoutez un premier objectif ci-dessus.</div>';
+  else if(C.reste<0) n=`<div class="warn">Votre budget est déficitaire de ${CHF(-C.reste)}/mois : aucune marge pour vos objectifs. Voir les pistes dans l'onglet ⚖️ Budget.</div>`;
+  else if(O.total>O.marge) n=`<div class="warn">Vos objectifs demandent ${CHF(O.total)}/mois, pour une marge de ${CHF(O.marge)}/mois. Pistes : repousser une date, revoir un montant, ou y consacrer une partie de votre épargne cash (${CHF(C.totCash)}/mois, onglet 🐷 Épargne).</div>`;
+  else if(O.total>0) n=`<div class="info">✅ Tous vos objectifs datés sont finançables avec la marge actuelle ; il reste ${CHF(O.marge-O.total)}/mois. Astuce : programmez un virement mensuel vers un compte dédié pour chaque objectif.</div>`;
+  document.getElementById('obj_note').innerHTML=n;
+}
+
 /* =================== COMPTES & FORTUNE =================== */
 function renderComptes(){
   const list=document.getElementById('list_comptes'); list.innerHTML='';
@@ -1396,7 +1486,7 @@ function push(){ // écrire state dans les champs
   setV('s_capital',state.strategie.capital); setV('s_mensuel',state.strategie.mensuel);
   for(const g in FIELDS) FIELDS[g].forEach(f=>setV(g+'_'+f,state[g][f]));
   renderQuestions();
-  renderItems('fixes'); renderItems('variables'); renderInsurances(); renderItems('epargne'); renderPilier(); renderComptes();
+  renderItems('fixes'); renderItems('variables'); renderInsurances(); renderItems('epargne'); renderPilier(); renderComptes(); renderObjectifs();
 }
 function setV(id,v){const e=document.getElementById(id); if(e!=null)e.value=(v==null?"":v);}
 function exportData(){
@@ -1569,6 +1659,8 @@ function calc(){
   renderStrategie(prof,ctx);
   renderLPP(ctx);
   renderRetraite(ctx);
+  ctx.objectifs=computeObjectifs(ctx);
+  renderObjectifsOut(ctx);
   CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();
@@ -2067,6 +2159,11 @@ function exampleState(){
   s.lpp={avoir:"85000",avoir65:"410000",tauxConv:"5.8",rente65:"",rachatMax:"45000",tauxInteret:"1.5",
     renteInvalidite:"22000",renteEnfantInvalide:"4400",renteConjoint:"13200",renteOrphelin:"4400",capitalDeces:"",
     rachatMontant:"10000",rachatAns:"1",retraitCapital:"non"};
+  const dans=m=>{ const d=new Date(); d.setMonth(d.getMonth()+m); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); };
+  s.objectifs=[
+    {nom:"Voyage au Japon",cible:"6000",date:dans(10),deja:"1500"},
+    {nom:"Nouvelle voiture",cible:"15000",date:dans(32),deja:"2000"}
+  ];
   s.retraite={age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""};
   s.profil={age:"30-44",objectif:"croissance",horizon:"4",besoin:"peu",revenus:"stable",connaissances:"bases",
     experience:"3a",reaction:"2",perte:"2",portefeuille:"2",esg:"oui"};

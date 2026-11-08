@@ -126,6 +126,8 @@
   .swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
   .idea h3{font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .idea p{margin:4px 0;font-size:13.5px}
+  .edu{font-size:12.5px;color:var(--muted);background:#fff;border:1px dashed var(--bord);border-radius:10px;padding:10px 12px;margin-bottom:18px}
+  tr.best td{background:var(--vert-bg)}
   .tbl-wrap td.num{white-space:nowrap}
   @media(max-width:720px){.tbl-wrap table{font-size:12.5px}.tbl-wrap th,.tbl-wrap td{padding:7px 4px}.tbl-wrap th{font-size:10.5px}}
   .del{background:var(--rouge-bg);color:var(--rouge);border-radius:8px;padding:9px 11px;font-weight:700}
@@ -363,6 +365,75 @@
     </div>
   </section>
 
+  <!-- ============ 2e PILIER (LPP) ============ -->
+  <section class="tab-page" data-tab="lpp">
+    <div class="card">
+      <h2>🏛️ Votre 2ᵉ pilier (caisse de pension)</h2>
+      <p class="sub">Recopiez les chiffres de votre <b>certificat de prévoyance</b> : votre caisse de pension vous l'envoie chaque année, souvent en début d'année. Laissez vide ce que vous ne trouvez pas.</p>
+      <div class="grid g3">
+        <div><label>Avoir de vieillesse actuel (CHF)</label><input type="number" id="lpp_avoir" oninput="calc()"></div>
+        <div><label>Avoir projeté à 65 ans (CHF)</label><input type="number" id="lpp_avoir65" oninput="calc()"><div class="inline-help">Avec intérêts, selon le certificat</div></div>
+        <div><label>Taux de conversion à 65 ans (%)</label><input type="number" id="lpp_tauxConv" step="0.01" oninput="calc()"><div class="inline-help" id="lpp_tauxConvHelp"></div></div>
+        <div><label>Rente de vieillesse projetée (CHF / an)</label><input type="number" id="lpp_rente65" oninput="calc()"><div class="inline-help">Si indiquée, elle remplace le calcul « avoir × taux »</div></div>
+        <div><label>Potentiel de rachat (CHF)</label><input type="number" id="lpp_rachatMax" oninput="calc()"><div class="inline-help">« Rachat possible » ou « somme de rachat maximale »</div></div>
+        <div><label>Taux d'intérêt crédité (%)</label><input type="number" id="lpp_tauxInteret" step="0.05" oninput="calc()"><div class="inline-help" id="lpp_tauxInteretHelp"></div></div>
+      </div>
+      <hr class="hr">
+      <h3 style="font-size:15px">Prestations en cas d'invalidité ou de décès</h3>
+      <p class="small muted" style="margin-top:0">Utilisées dans l'onglet 🩺 Décès & invalidité.</p>
+      <div class="grid g3">
+        <div><label>Rente d'invalidité (CHF / an)</label><input type="number" id="lpp_renteInvalidite" oninput="calc()"></div>
+        <div><label>Rente pour enfant d'invalide (CHF / an, par enfant)</label><input type="number" id="lpp_renteEnfantInvalide" oninput="calc()"></div>
+        <div><label>Rente de conjoint·e survivant·e (CHF / an)</label><input type="number" id="lpp_renteConjoint" oninput="calc()"></div>
+        <div><label>Rente d'orphelin (CHF / an, par enfant)</label><input type="number" id="lpp_renteOrphelin" oninput="calc()"></div>
+        <div><label>Capital-décès (CHF)</label><input type="number" id="lpp_capitalDeces" oninput="calc()"><div class="inline-help">Versé en plus des rentes, selon le règlement</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Votre 2ᵉ pilier en bref</h2>
+      <div class="grid g4">
+        <div class="stat"><div class="lbl">Avoir actuel</div><div class="val" id="lpp_oAvoir">–</div></div>
+        <div class="stat"><div class="lbl">Avoir projeté à 65 ans</div><div class="val" id="lpp_oAvoir65">–</div></div>
+        <div class="stat green"><div class="lbl">Rente projetée à 65 ans</div><div class="val" id="lpp_oRente">–</div></div>
+        <div class="stat blue"><div class="lbl">Potentiel de rachat</div><div class="val" id="lpp_oRachat">–</div></div>
+      </div>
+      <div id="lpp_oNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>💸 Simulateur de rachat</h2>
+      <p class="sub">Un rachat est déductible du revenu imposable : vous payez moins d'impôts l'année du rachat. L'économie est calculée avec votre impôt estimé (onglet 🧾 Impôts).</p>
+      <div class="grid g3">
+        <div><label>Montant du rachat (CHF)</label><input type="number" id="lpp_rachatMontant" oninput="calc()"><div class="inline-help" id="lpp_rachatMontantHelp"></div></div>
+        <div><label>Réparti sur</label><select id="lpp_rachatAns" onchange="calc()"><option value="1">1 année</option><option value="2">2 années</option><option value="3">3 années</option><option value="4">4 années</option><option value="5">5 années</option></select><div class="inline-help">Étaler un gros rachat réduit souvent l'impôt davantage</div></div>
+        <div><label>Retrait en capital prévu dans les 3 ans ?</label><select id="lpp_retraitCapital" onchange="calc()"><option value="non">Non</option><option value="oui">Oui (retraite en capital, achat immobilier…)</option></select></div>
+      </div>
+      <div class="grid g4" style="margin-top:16px">
+        <div class="stat green"><div class="lbl">Économie d'impôt</div><div class="val" id="lpp_sEco">–</div></div>
+        <div class="stat"><div class="lbl">Soit, par franc racheté</div><div class="val" id="lpp_sTaux">–</div></div>
+        <div class="stat"><div class="lbl">Coût réel du rachat</div><div class="val" id="lpp_sCout">–</div></div>
+        <div class="stat blue"><div class="lbl">Rente en plus à 65 ans</div><div class="val" id="lpp_sRente">–</div></div>
+      </div>
+      <div class="tbl-wrap" style="margin-top:14px"><table>
+        <thead><tr><th>Comment racheter</th><th class="num">Déduit par année</th><th class="num">Économie d'impôt totale</th></tr></thead>
+        <tbody id="lpp_sTable"></tbody>
+      </table></div>
+      <div id="lpp_sWarn"></div>
+    </div>
+
+    <div class="card">
+      <h2>⚖️ Même montant : rachat LPP, 3a ou placement libre ?</h2>
+      <p class="sub" id="lpp_cSub"></p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Option</th><th class="num">Impôt économisé aujourd'hui</th><th class="num">Valeur nette à la retraite</th><th>Disponibilité de l'argent</th></tr></thead>
+        <tbody id="lpp_cTable"></tbody>
+      </table></div>
+      <div id="lpp_cNote"></div>
+    </div>
+    <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> L'économie d'impôt dépend de votre canton et de votre commune ; les règles de rachat dépendent du règlement de votre caisse. Vérifiez auprès de votre caisse de pension avant tout rachat.</div>
+  </section>
+
   <!-- ============ COMPTES & FORTUNE ============ -->
   <section class="tab-page" data-tab="fortune">
     <div class="card">
@@ -430,6 +501,11 @@
             <option value="direct">⚡ Acomptes prélevés directement chaque mois</option>
           </select>
           <div class="inline-help">Utilisé dans l'onglet 💸 Jour de paie</div>
+        </div>
+        <div>
+          <label>Taux marginal d'imposition (%) — facultatif</label>
+          <input type="number" id="i_marginal" step="0.1" placeholder="auto" oninput="calc()">
+          <div class="inline-help">Si vous le connaissez (calculateur de votre canton), il sert à estimer les économies d'impôt du 3a et des rachats LPP</div>
         </div>
       </div>
     </div>
@@ -725,16 +801,20 @@ function blankState(){
     revenus:{brut:"",mois:"12",prime:"",autres:"",social:"13",netManuel:false,netVal:""},
     fixes:[], variables:[], assurances:[], epargne:[], pilier:[], comptes:[],
     pilierCfg:{type:"caisse",plafond:String(LEGAL.pilier3a.avecCaisse),versement:"",pay:"direct"},
-    impots:{statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:"",pay:"souscompte"},
+    impots:{statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:"",pay:"souscompte",marginal:""},
     budgetModel:"503020",
     profil:{},                          // réponses au questionnaire investisseur { idQuestion: valeur }
     strategie:{capital:"",mensuel:""},  // montants à investir saisis à la main (vide = calcul automatique)
-    perso:{naissance:""}
+    perso:{naissance:""},
+    lpp:{avoir:"",avoir65:"",tauxConv:"",rente65:"",rachatMax:"",tauxInteret:"",renteInvalidite:"",renteEnfantInvalide:"",
+      renteConjoint:"",renteOrphelin:"",capitalDeces:"",rachatMontant:"",rachatAns:"1",retraitCapital:"non"}
   };
 }
 // Champs simples des nouvelles sections : l'id HTML est « groupe_champ » (ex. perso_naissance).
 // Ils sont lus / écrits automatiquement par pull() et push(), donc sauvegardés, exportés et importés.
-const FIELDS={perso:['naissance']};
+const FIELDS={perso:['naissance'],
+  lpp:['avoir','avoir65','tauxConv','rente65','rachatMax','tauxInteret','renteInvalidite','renteEnfantInvalide',
+    'renteConjoint','renteOrphelin','capitalDeces','rachatMontant','rachatAns','retraitCapital']};
 // Complète un état chargé (ancienne sauvegarde, fichier importé) avec les champs ajoutés depuis.
 function normalizeState(s){
   const b=blankState();
@@ -760,7 +840,7 @@ const STEPS = [[1,"Mon budget","Budget"],[2,"Mon patrimoine","Patrimoine"],[3,"M
 const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["variables","🛒 Frais variables",1],
   ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],
   ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],
-  ["pilier","🌳 3ᵉ pilier",3],
+  ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],
   ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6]];
 const lastTab = {}; // dernier onglet ouvert dans chaque étape
 function buildTabs(){
@@ -803,6 +883,7 @@ const CHF = n => "CHF "+ (Math.round(n)).toLocaleString('fr-CH').replace(/ /g,
 const signed = n => (n<0?"− ":"+ ")+CHF(Math.abs(n));
 const num = v => { const n=parseFloat(v); return isNaN(n)?0:n; };
 const pct = n => (n).toLocaleString('fr-CH',{maximumFractionDigits:1})+" %";
+const pct2 = n => (n).toLocaleString('fr-CH',{maximumFractionDigits:2})+" %"; // pour les taux légaux (ex. 1,25 %)
 // Âge à partir de l'année de naissance (onglet Revenus) ; null si non renseignée
 function ageActuel(){ const y=num(state.perso&&state.perso.naissance), now=new Date().getFullYear(); return (y>1900&&y<=now)?now-y:null; }
 function trancheAge(a){ return a<30?'u30':a<45?'30-44':a<55?'45-54':a<65?'55-64':'65+'; }
@@ -940,6 +1021,89 @@ function addPilier(){ state.pilier.push({label:"",kind:"titres",balance:""}); re
 function delP(idx){ state.pilier.splice(idx,1); renderPilier(); calc(); }
 function updP(idx,f,v){ state.pilier[idx][f]=v; calc(); save(); }
 
+/* =================== 2e PILIER (LPP) =================== */
+// Âge de retraite choisi (onglet Retraite), sinon l'âge de référence AVS
+function ageRetraite(){ const a=num(state.retraite&&state.retraite.age); return a>=58&&a<=70?a:LEGAL.avs.ageReference; }
+// Chiffres LPP réutilisés par la retraite, la couverture et le bilan
+function computeLPP(C){
+  const L=state.lpp, ref=LEGAL.avs.ageReference;
+  const avoir=num(L.avoir);
+  const conv=num(L.tauxConv)||LEGAL.lpp.tauxConversionMin;
+  const i=L.tauxInteret!=='' ? num(L.tauxInteret) : LEGAL.lpp.tauxInteretMin;
+  const ans65=C.age!=null ? Math.max(0,ref-C.age) : null;
+  // Avoir à 65 ans : celui du certificat ; sinon déduit de la rente ; sinon avoir actuel + intérêts (sans nouvelles cotisations)
+  let avoir65=num(L.avoir65), estime=false;
+  if(!avoir65 && num(L.rente65)>0) avoir65=num(L.rente65)/(conv/100);
+  if(!avoir65 && avoir>0){ avoir65=avoir*Math.pow(1+i/100, ans65||0); estime=true; }
+  const renteAn = num(L.rente65)>0 ? num(L.rente65) : avoir65*conv/100;
+  const ecoRachat = x => C.ecoDeduction(x); // économie d'impôt d'une déduction x sur une année
+  return {avoir,avoir65,estime,conv,i,ans65,renteAn,rachatMax:num(L.rachatMax),ecoRachat,
+    saisi: avoir>0||num(L.avoir65)>0||num(L.rente65)>0};
+}
+function renderLPP(C){
+  const R=C.lpp, L=state.lpp;
+  setText('lpp_tauxConvHelp',`Minimum légal : ${pct(LEGAL.lpp.tauxConversionMin)} (part obligatoire) ; souvent plus bas dans les caisses`);
+  setText('lpp_tauxInteretHelp',`Minimum légal ${LEGAL.annee} : ${pct2(LEGAL.lpp.tauxInteretMin)}`);
+  setText('lpp_oAvoir', R.avoir?CHF(R.avoir):'–');
+  setText('lpp_oAvoir65', R.avoir65?CHF(R.avoir65):'–');
+  setText('lpp_oRente', R.renteAn?CHF(R.renteAn/12)+'/mois':'–');
+  setText('lpp_oRachat', R.rachatMax?CHF(R.rachatMax):'–');
+  let note='';
+  if(state.pilierCfg.type==='sans') note+=`<div class="warn">Vous avez indiqué ne pas avoir de caisse de pension (onglet 🌳 3ᵉ pilier) : cette page ne s'applique que si vous êtes affilié·e à une caisse.</div>`;
+  if(!R.saisi) note+=`<div class="info">Renseignez au moins l'avoir de vieillesse actuel pour obtenir une estimation.</div>`;
+  else if(R.estime) note+=`<p class="small muted">Avoir à 65 ans estimé à partir de l'avoir actuel et des intérêts, <b>sans vos futures cotisations</b> : il est donc sous-estimé. Indiquez celui du certificat pour plus de précision.</p>`;
+  document.getElementById('lpp_oNote').innerHTML=note;
+
+  /* --- Simulateur de rachat --- */
+  const M = L.rachatMontant!=='' ? num(L.rachatMontant) : R.rachatMax;
+  setText('lpp_rachatMontantHelp', R.rachatMax ? `Vide = tout le potentiel (${CHF(R.rachatMax)})` : "Indiquez un montant, ou le potentiel de rachat plus haut");
+  const N=Math.min(5,Math.max(1,num(L.rachatAns)||1));
+  const ecoSur = n => n*R.ecoRachat(M/n);
+  const eco=ecoSur(N);
+  const plus65=M*Math.pow(1+R.i/100, R.ans65||0)*R.conv/100/12;
+  setText('lpp_sEco', M>0?CHF(eco):'–');
+  setText('lpp_sTaux', M>0?pct(eco/M*100):'–');
+  setText('lpp_sCout', M>0?CHF(M-eco):'–');
+  setText('lpp_sRente', M>0?CHF(plus65)+'/mois':'–');
+  const lignes=[...new Set([1,2,3,5,N])].sort((a,b)=>a-b);
+  document.getElementById('lpp_sTable').innerHTML = M>0 ? lignes.map(n=>`<tr class="${n===N?'hl':''}"><td>${n===1?'En une fois':`Réparti sur ${n} ans`}</td><td class="num">${CHF(M/n)}</td><td class="num">${CHF(ecoSur(n))}</td></tr>`).join('')
+    : `<tr><td colspan="3" class="muted">Indiquez un montant de rachat.</td></tr>`;
+  const warns=[];
+  const ansRet = C.age!=null ? ageRetraite()-C.age : null;
+  if(state.pilierCfg.type==='sans') warns.push("Sans caisse de pension, un rachat n'est en principe pas possible.");
+  if(R.rachatMax && M>R.rachatMax) warns.push(`Le montant dépasse votre potentiel de rachat (${CHF(R.rachatMax)}) : la caisse n'acceptera pas l'excédent.`);
+  if(M/N>C.taxable && C.taxable>0) warns.push(`Le montant déduit par année (${CHF(M/N)}) dépasse votre revenu imposable estimé (${CHF(C.taxable)}) : l'excédent n'apporte aucune économie. Étalez davantage.`);
+  const regle=LEGAL.lpp.blocageRachatAns;
+  if(L.retraitCapital==='oui') warns.push(`⏳ <b>Règle des ${regle} ans</b> : les prestations issues d'un rachat ne peuvent pas être retirées en capital pendant ${regle} ans. Si vous retirez du capital avant (retraite en capital, achat immobilier), la déduction fiscale peut être annulée.`);
+  else if(ansRet!=null && ansRet<N-1+regle) warns.push(`⏳ <b>Règle des ${regle} ans</b> : votre retraite est prévue dans ${Math.max(0,ansRet)} an${ansRet>1?'s':''}. Un rachat fait moins de ${regle} ans avant un retrait en capital n'est pas admis fiscalement ; il reste possible si vous prenez une <b>rente</b>.`);
+  let wh=warns.map(w=>`<div class="warn">${w}</div>`).join('');
+  if(!C.margSaisi) wh+=`<div class="info">💡 L'économie est calculée avec un taux cantonal fixe : elle est probablement <b>sous-estimée</b>, car l'impôt cantonal est progressif. Pour plus de précision, indiquez votre taux marginal dans l'onglet 🧾 Impôts.</div>`;
+  wh+=`<p class="small muted">Si vous avez déjà retiré de l'argent de la caisse pour un logement (EPL), il doit en principe être remboursé avant un nouveau rachat. La « rente en plus » suppose le même taux de conversion et les intérêts jusqu'à 65 ans.</p>`;
+  document.getElementById('lpp_sWarn').innerHTML=wh;
+
+  /* --- Comparaison rachat / 3a / libre pour le même montant --- */
+  const n = ansRet!=null ? Math.max(1,ansRet) : 20;
+  const inv=C.inv, r=inv.S.ret;
+  const r3a = state.pilier.some(x=>x.kind==='titres') ? r : LEGAL.hypotheses.rendement3aBancaire;
+  const tCap=LEGAL.hypotheses.impotRetraitCapital/100;
+  const g=(taux)=>Math.pow(1+taux/100,n);
+  document.getElementById('lpp_cSub').innerHTML = M>0
+    ? `Pour <b>${CHF(M)}</b> placés aujourd'hui, valeur estimée dans <b>${n} ans</b>${ansRet!=null?` (à ${ageRetraite()} ans)`:' (âge inconnu : indiquez votre année de naissance dans 💰 Revenus)'}. L'impôt économisé est supposé placé librement.`
+    : "Indiquez un montant de rachat ci-dessus pour comparer les trois options.";
+  if(M>0){
+    const resteMax3a=Math.max(0,C.plafond3a-C.versement3a), m3a=Math.min(M,resteMax3a), eco3a=R.ecoRachat(m3a);
+    const opts=[
+      {nom:"🏛️ Rachat LPP", eco, val:M*g(R.i)*(1-tCap)+eco*g(r), dispo:"Bloqué jusqu'à la retraite (sauf achat immobilier, départ définitif de Suisse, indépendance)"},
+      {nom:`🌳 Versement 3a${m3a<M?` <span class="small muted">(${m3a>0?'limité à '+CHF(m3a)+' cette année, le reste placé librement':'plafond 3a déjà atteint cette année'})</span>`:''}`,
+        eco:eco3a, val:m3a*g(r3a)*(1-tCap)+eco3a*g(r)+(M-m3a)*g(r), dispo:"Bloqué jusqu'à 5 ans avant l'âge AVS (sauf achat immobilier, indépendance…)"},
+      {nom:"📈 Placement libre", eco:0, val:M*g(r), dispo:"Disponible à tout moment"}
+    ];
+    const best=Math.max(...opts.map(o=>o.val));
+    document.getElementById('lpp_cTable').innerHTML=opts.map(o=>`<tr class="${o.val===best?'best':''}"><td>${o.nom}</td><td class="num">${CHF(o.eco)}</td><td class="num"><b>${CHF(o.val)}</b></td><td class="small">${o.dispo}</td></tr>`).join('');
+  } else document.getElementById('lpp_cTable').innerHTML='';
+  document.getElementById('lpp_cNote').innerHTML=`<p class="small muted">Hypothèses : intérêt LPP ${pct2(R.i)} ; rendement ${inv.provisoire?"d'un profil équilibré (profil investisseur non rempli)":'de votre profil'} ${pct(r)} ; 3a ${r3a===r?'en titres':'bancaire'} ${pct(r3a)} ; impôt au retrait en capital ≈ ${pct(tCap*100)} (varie selon le canton). Non pris en compte : impôt sur la fortune et sur les revenus du placement libre, frais. Le rachat est d'autant plus intéressant que votre taux d'imposition est élevé et la retraite proche ; le placement libre reste disponible.</p>`;
+}
+
 /* =================== COMPTES & FORTUNE =================== */
 function renderComptes(){
   const list=document.getElementById('list_comptes'); list.innerHTML='';
@@ -1002,7 +1166,7 @@ function pull(){ // lire les champs simples dans state
     social:val('r_social'),netManuel:document.getElementById('r_netManuel').checked,netVal:val('r_netVal')};
   state.pilierCfg={type:val('p_type'),plafond:val('p_plafond'),versement:val('p_versement'),pay:val('p_pay')};
   state.impots={statut:val('i_statut'),canton:val('i_canton'),enfants:val('i_enfants'),
-    revenu:val('i_revenu'),deductions:val('i_deductions'),tauxCanton:val('i_tauxCanton'),pay:val('i_pay')};
+    revenu:val('i_revenu'),deductions:val('i_deductions'),tauxCanton:val('i_tauxCanton'),pay:val('i_pay'),marginal:val('i_marginal')};
   state.strategie={capital:val('s_capital'),mensuel:val('s_mensuel')};
   for(const g in FIELDS){ state[g]=state[g]||{}; FIELDS[g].forEach(f=>{ state[g][f]=val(g+'_'+f); }); }
 }
@@ -1016,7 +1180,7 @@ function push(){ // écrire state dans les champs
   setV('i_statut',state.impots.statut); setV('i_canton',state.impots.canton); setV('i_enfants',state.impots.enfants);
   setV('i_revenu',state.impots.revenu); setV('i_deductions',state.impots.deductions);
   setV('i_tauxCanton',state.impots.tauxCanton||CANTONS[state.impots.canton][1]);
-  setV('i_pay',state.impots.pay);
+  setV('i_pay',state.impots.pay); setV('i_marginal',state.impots.marginal);
   setV('s_capital',state.strategie.capital); setV('s_mensuel',state.strategie.mensuel);
   for(const g in FIELDS) FIELDS[g].forEach(f=>setV(g+'_'+f,state[g][f]));
   renderQuestions();
@@ -1107,8 +1271,11 @@ function calc(){
   setText('i_mois',CHF(tTot/12));
 
   /* --- 3a économie d'impôt (méthode différentielle) --- */
-  const taxableSans=Math.max(0, taxable+versement3a);
-  const eco = taxTotal(taxableSans,statut,tauxCC) - taxTotal(taxable,statut,tauxCC);
+  // Économie d'impôt d'une déduction x : taux marginal saisi s'il existe, sinon différence d'impôt estimée
+  const margSaisi=num(state.impots.marginal);
+  const ecoDeduction=(x,base=taxable)=> margSaisi>0 ? Math.min(Math.max(0,x),base)*margSaisi/100
+    : taxTotal(base,statut,tauxCC)-taxTotal(Math.max(0,base-x),statut,tauxCC);
+  const eco = ecoDeduction(versement3a, taxable+versement3a);
   const marginal = versement3a>0 ? eco/versement3a*100 : 0;
   const totalPilier=state.pilier.reduce((s,i)=>s+num(i.balance),0);
   setText('p_economie', versement3a>0?CHF(eco):'CHF 0.–');
@@ -1176,7 +1343,7 @@ function calc(){
   const ctx={netMois,reste,depensesMois,totCash,versement3a,plafond3a:num(state.pilierCfg.plafond),soldeEpargne,
     placements:state.comptes.filter(c=>c.cat==='placement').reduce((s,c)=>s+num(c.balance),0),
     dettes:state.comptes.filter(c=>c.cat==='dette' && num(c.balance)>0),
-    impot:x=>taxTotal(x,statut,tauxCC), taxable};
+    impot:x=>taxTotal(x,statut,tauxCC), ecoDeduction, margSaisi, taxable};
   const age=ageActuel();
   setText('perso_ageTxt', age!=null ? `Âge : ${age} ans · sert pour la retraite, l'immobilier et le profil investisseur.` : "Sert pour la retraite, l'immobilier et le profil investisseur.");
   if(age!=null) state.profil.age=trancheAge(age); // le profil reprend l'âge au lieu de le redemander
@@ -1184,8 +1351,10 @@ function calc(){
   Object.assign(ctx,{prof, age, netAnnuel, brutAnnuel, salaireVerse, totalPilier, actifs, dettesTotal:dettes, statut, tauxCC, enfants,
     impotsMois, epargne3aMois, totFixes, totVar, totAss});
   ctx.inv=computeInvest(prof,ctx);
+  ctx.lpp=computeLPP(ctx);
   renderProfilResult(prof);
   renderStrategie(prof,ctx);
+  renderLPP(ctx);
   CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();
@@ -1568,7 +1737,7 @@ function renderStrategie(prof,ctx){
   // 4. 3ᵉ pilier
   if(ctx.plafond3a>0){
     if(ctx.versement3a>=ctx.plafond3a*0.99) add('ok',"3ᵉ pilier au maximum",`Vous versez ${CHF(ctx.versement3a)} par an, le plafond déductible.`);
-    else { const manque=ctx.plafond3a-ctx.versement3a, eco=ctx.impot(ctx.taxable)-ctx.impot(Math.max(0,ctx.taxable-manque));
+    else { const manque=ctx.plafond3a-ctx.versement3a, eco=ctx.ecoDeduction(manque);
       add('todo',"Verser le maximum en 3ᵉ pilier",`Encore ${CHF(manque)} par an possibles (${CHF(manque/12)}/mois), pour environ ${CHF(eco)} d'impôts en moins chaque année.`); }
   }
   const procheRetraite=['55-64','65+'].includes(p.age);
@@ -1588,7 +1757,11 @@ function renderStrategie(prof,ctx){
     add('todo',`Investir selon votre profil ${P.name.toLowerCase()}`,`${parts.join(', ')}, selon la répartition ci-dessous.${ctx.placements>0?' Réorganisez aussi vos placements existants selon cette répartition.':''}`);
   } else add('info',`Investir selon votre profil ${P.name.toLowerCase()}`,"Une fois les étapes précédentes faites, le surplus de votre budget pourra être investi selon la répartition ci-dessous.");
   // 6. Prévoyance professionnelle
-  if(state.pilierCfg.type==='caisse') add('info',"Rachat LPP : à vérifier","Votre certificat de caisse de pension indique peut-être un « potentiel de rachat ». Un rachat est déductible des impôts, mais l'argent reste dans la prévoyance (et aucun retrait en capital n'est possible pendant 3 ans) : à envisager une fois les étapes précédentes faites.");
+  if(state.pilierCfg.type==='caisse'){
+    const rm=ctx.lpp.rachatMax;
+    if(rm>0) add('info',"Rachat LPP possible",`Votre certificat indique un potentiel de rachat de ${CHF(rm)}. Un rachat est déductible des impôts (par exemple ${CHF(Math.min(rm,10000))} → environ ${CHF(ctx.lpp.ecoRachat(Math.min(rm,10000)))} d'impôts en moins), mais l'argent reste bloqué dans la prévoyance : à envisager une fois les étapes précédentes faites. Simulez-le dans l'onglet 🏛️ 2ᵉ pilier.`);
+    else add('info',"Rachat LPP : à vérifier","Votre certificat de caisse de pension indique peut-être un « potentiel de rachat » : reportez-le dans l'onglet 🏛️ 2ᵉ pilier pour simuler l'économie d'impôt. L'argent reste bloqué dans la prévoyance (aucun retrait en capital pendant 3 ans).");
+  }
   // 7. Suivi
   add('info',"Chaque année","Rééquilibrez vers la répartition cible, versez le 3a avant le 31 décembre, comparez vos assurances (LAMal : résiliation avant le 30 novembre) et refaites ce questionnaire si votre situation change.");
   const ICO={ok:'✅',todo:'🔶',ko:'⛔',info:'ℹ️'};
@@ -1677,6 +1850,9 @@ function exampleState(){
   s.impots={statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:String(CANTONS.VD[1]),pay:"souscompte"};
   s.budgetModel="503020";
   s.perso={naissance:"1986"};
+  s.lpp={avoir:"85000",avoir65:"410000",tauxConv:"5.8",rente65:"",rachatMax:"45000",tauxInteret:"1.5",
+    renteInvalidite:"22000",renteEnfantInvalide:"4400",renteConjoint:"13200",renteOrphelin:"4400",capitalDeces:"",
+    rachatMontant:"10000",rachatAns:"1",retraitCapital:"non"};
   s.profil={age:"30-44",objectif:"croissance",horizon:"4",besoin:"peu",revenus:"stable",connaissances:"bases",
     experience:"3a",reaction:"2",perte:"2",portefeuille:"2",esg:"oui"};
   return s;

@@ -66,7 +66,8 @@
   .row.ep{grid-template-columns:2fr 1.2fr 1.3fr 110px}
   .row.ins{grid-template-columns:1.3fr 1.2fr .9fr 1fr 1.3fr auto}
   .row.obj{grid-template-columns:1.6fr 1fr 1fr 1fr auto}
-  @media(max-width:720px){.row,.row.pay,.row.ep,.row.ins,.row.obj{grid-template-columns:1fr 1fr;}.row .full,.row .paycell{grid-column:1/-1}
+  .row.dette{grid-template-columns:1.5fr 1.1fr 1fr .8fr 1fr .9fr auto}
+  @media(max-width:720px){.row,.row.pay,.row.ep,.row.ins,.row.obj,.row.dette{grid-template-columns:1fr 1fr;}.row .full,.row .paycell{grid-column:1/-1}
     .row.pay .delcell,.row.ins .delcell{grid-column:1/-1;display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center}}
   .obj-out{grid-column:1/-1;font-size:13px}
   .prog{height:10px;background:var(--bg);border-radius:6px;overflow:hidden;margin:4px 0 6px}
@@ -639,13 +640,41 @@
     <div class="edu">ℹ️ <b>Suivi simplifié, à but éducatif.</b> Les comparaisons se font par grande catégorie. Le « revenu prévu » est le salaire versé chaque mois (sans 13ᵉ ni prime) : le mois du 13ᵉ, le réel sera logiquement plus élevé.</div>
   </section>
 
+  <!-- ============ DETTES & LEASINGS ============ -->
+  <section class="tab-page" data-tab="dettes">
+    <div class="card">
+      <h2>💳 Vos dettes et leasings</h2>
+      <p class="sub">Crédits, leasings, hypothèque… Indiquez le montant restant, le taux et la mensualité (voir votre contrat ou votre relevé). La durée est calculée si vous ne la connaissez pas.</p>
+      <div id="list_dettes"></div>
+      <button class="add-btn" onclick="addDette()">+ Ajouter une dette ou un leasing</button>
+      <div id="dettes_total" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>🏔️ Dans quel ordre rembourser ? (méthode « avalanche »)</h2>
+      <p class="sub">On paie le minimum partout, et chaque franc en plus va à la dette au <b>taux le plus élevé</b> ; une fois soldée, sa mensualité passe à la suivante. C'est l'ordre qui coûte le moins d'intérêts.</p>
+      <div class="grid g3">
+        <div><label>Montant en plus par mois pour rembourser (CHF)</label><input type="number" id="dettesCfg_extra" placeholder="0" oninput="calc()"><div class="inline-help" id="dettes_extraHelp"></div></div>
+      </div>
+      <div class="tbl-wrap" style="margin-top:12px"><table>
+        <thead><tr><th>Ordre</th><th>Dette</th><th class="num">Taux</th><th class="num">Restant</th><th class="num">Mensualité</th></tr></thead>
+        <tbody id="dettes_ordre"></tbody>
+      </table></div>
+      <div id="dettes_simu"></div>
+    </div>
+    <div class="card">
+      <h2>⚖️ Rembourser plus vite ou investir ?</h2>
+      <div id="dettes_vs"></div>
+    </div>
+    <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> Calculs avec un taux fixe et des mensualités constantes. Pour un leasing, la valeur résiduelle n'est pas prise en compte, et un remboursement anticipé est souvent soumis à des frais : vérifiez votre contrat.</div>
+  </section>
+
   <!-- ============ COMPTES & FORTUNE ============ -->
   <section class="tab-page" data-tab="fortune">
     <div class="card">
       <h2>🏦 Comptes bancaires & fortune</h2>
-      <p class="sub">Comptes, épargne, placements, et dettes éventuelles pour calculer votre fortune nette.</p>
+      <p class="sub">Comptes, épargne, placements et autres actifs. Les dettes (crédits, leasings, hypothèque) se saisissent dans l'onglet <a href="#" onclick="goTab('dettes');return false">💳 Dettes & leasings</a> et sont déduites de la fortune nette.</p>
       <div id="list_comptes"></div>
-      <button class="add-btn" onclick="addCompte()">+ Ajouter un compte / actif / dette</button>
+      <button class="add-btn" onclick="addCompte()">+ Ajouter un compte ou un actif</button>
     </div>
     <div class="card">
       <h2>💎 Fortune nette</h2>
@@ -1021,6 +1050,7 @@ function blankState(){
     objectifs:[],                       // [{nom, cible, date:'AAAA-MM', deja}]
     suivi:{},                           // { 'AAAA-MM': {prevu:{catégorie:montant}, reel:{catégorie:montant}} }
     historique:[],                      // [{mois:'AAAA-MM', date, actifs, dettes, nette}]
+    dettes:[],                          // [{nom, type, restant, taux, mensualite, duree}]
     pilierCfg:{type:"caisse",plafond:String(LEGAL.pilier3a.avecCaisse),versement:"",pay:"direct"},
     impots:{statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:"",pay:"souscompte",marginal:""},
     budgetModel:"503020",
@@ -1031,7 +1061,8 @@ function blankState(){
       renteConjoint:"",renteOrphelin:"",capitalDeces:"",rachatMontant:"",rachatAns:"1",retraitCapital:"non"},
     retraite:{age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""},
     immo:{prix:"",revenu:"",date:"",cash:"",troisA:"",lpp:""},
-    couverture:{besoins:"",revenuConjoint:""}
+    couverture:{besoins:"",revenuConjoint:""},
+    dettesCfg:{extra:""}
   };
 }
 // Champs simples des nouvelles sections : l'id HTML est « groupe_champ » (ex. perso_naissance).
@@ -1041,7 +1072,8 @@ const FIELDS={perso:['naissance'],
     'renteConjoint','renteOrphelin','capitalDeces','rachatMontant','rachatAns','retraitCapital'],
   retraite:['age','dureeCapital','avsMode','ram','anneesManquantes','renteExtrait','renteConjoint'],
   immo:['prix','revenu','date','cash','troisA','lpp'],
-  couverture:['besoins','revenuConjoint']};
+  couverture:['besoins','revenuConjoint'],
+  dettesCfg:['extra']};
 // Complète un état chargé (ancienne sauvegarde, fichier importé) avec les champs ajoutés depuis.
 function normalizeState(s){
   const b=blankState();
@@ -1050,7 +1082,11 @@ function normalizeState(s){
   s.profil = (s.profil && typeof s.profil==='object') ? Object.assign({},s.profil) : {};
   s.suivi = (s.suivi && typeof s.suivi==='object' && !Array.isArray(s.suivi)) ? s.suivi : {};
   for(const k in s.suivi){ const r=s.suivi[k]; if(!r||typeof r!=='object'){ delete s.suivi[k]; continue; } r.prevu=r.prevu||{}; r.reel=r.reel||{}; }
-  ['fixes','variables','assurances','epargne','pilier','comptes','objectifs','historique'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ['fixes','variables','assurances','epargne','pilier','comptes','objectifs','historique','dettes'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  // Anciennes « dettes » de Comptes & Fortune → onglet Dettes (sans double comptage)
+  s.comptes.filter(c=>c.cat==='dette').forEach(c=>s.dettes.push({nom:c.label||'Dette',
+    type:/hypoth/i.test(c.label||'')?'hypotheque':/leasing/i.test(c.label||'')?'leasing':'credit',restant:c.balance||'',taux:'',mensualite:'',duree:''}));
+  s.comptes=s.comptes.filter(c=>c.cat!=='dette');
   s.historique=s.historique.filter(h=>h&&/^\d{4}-\d{2}$/.test(h.mois)).sort((a,b)=>a.mois.localeCompare(b.mois));
   // Anciennes données sans mode de paiement : mensuel → prélevé directement, sinon → sous-compte
   const mensuel = it => FREQ[it.freq||'mensuel']>=12;
@@ -1069,7 +1105,7 @@ const STEPS = [[1,"Mon budget","Budget"],[2,"Mon patrimoine","Patrimoine"],[3,"M
   [4,"Mes projets","Projets"],[5,"Mon profil d'investisseur","Profil"],[6,"Ma stratégie","Stratégie"]];
 const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["variables","🛒 Frais variables",1],
   ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],["suivi","📒 Suivi réel",1],
-  ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],
+  ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],["dettes","💳 Dettes & leasings",2],
   ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],["retraite","🏖️ Retraite",3],["couverture","🩺 Décès & invalidité",3],
   ["objectifs","🎯 Objectifs de vie",4],["immo","🏡 Achat immobilier",4],
   ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6]];
@@ -1800,6 +1836,101 @@ function renderHistorique(C){
   }).join('') : `<tr><td colspan="6" class="muted">Aucun instantané.</td></tr>`;
 }
 
+/* =================== DETTES & LEASINGS =================== */
+const DETTE_TYPES={leasing:"🚗 Leasing",credit:"💳 Crédit à la consommation",hypotheque:"🏠 Hypothèque",autre:"📄 Autre dette"};
+function renderDettes(){
+  const list=document.getElementById('list_dettes'); list.innerHTML='';
+  state.dettes.forEach((d,idx)=>{
+    const div=document.createElement('div'); div.className='row dette';
+    div.innerHTML=`
+      <div class="full"><label>Nom</label><input value="${esc(d.nom)}" oninput="updDette(${idx},'nom',this.value)" placeholder="Ex. Leasing voiture"></div>
+      <div><label>Type</label><select onchange="updDette(${idx},'type',this.value)">${Object.entries(DETTE_TYPES).map(([k,l])=>`<option value="${k}" ${k===d.type?'selected':''}>${l}</option>`).join('')}</select></div>
+      <div><label>Restant (CHF)</label><input type="number" value="${esc(d.restant)}" oninput="updDette(${idx},'restant',this.value)"></div>
+      <div><label>Taux (%)</label><input type="number" step="0.1" value="${esc(d.taux)}" oninput="updDette(${idx},'taux',this.value)"></div>
+      <div><label>Mensualité (CHF)</label><input type="number" value="${esc(d.mensualite)}" oninput="updDette(${idx},'mensualite',this.value)"></div>
+      <div><label>Mois restants</label><input type="number" value="${esc(d.duree)}" placeholder="auto" oninput="updDette(${idx},'duree',this.value)"></div>
+      <div><button class="del" onclick="delDette(${idx})" title="Supprimer">✕</button></div>
+      <div class="obj-out" id="dette_out_${idx}"></div>`;
+    list.appendChild(div);
+  });
+}
+function addDette(){ state.dettes.push({nom:"",type:"credit",restant:"",taux:"",mensualite:"",duree:""}); renderDettes(); calc(); }
+function delDette(idx){ state.dettes.splice(idx,1); renderDettes(); calc(); }
+function updDette(idx,f,v){ state.dettes[idx][f]=v; calc(); }
+// Durée, mensualité et intérêts d'une dette à taux fixe et mensualités constantes
+function analyseDette(d){
+  const B=num(d.restant), r=num(d.taux)/100/12; let M=num(d.mensualite), n=num(d.duree)||null, infini=false;
+  if(!M && n && B>0) M = r>0 ? B*r/(1-Math.pow(1+r,-n)) : B/n;
+  if(!n && M>0 && B>0){
+    if(r>0 && M<=B*r+1e-9) infini=true;
+    else n = r>0 ? -Math.log(1-r*B/M)/Math.log(1+r) : B/M;
+  }
+  const interets = n && M ? Math.max(0,M*n-B) : null;
+  let fin=null; if(n){ const f=new Date(); f.setMonth(f.getMonth()+Math.ceil(n)); fin=f; }
+  return {B,r,M,n,infini,interets,fin,taux:num(d.taux),tauxConnu:d.taux!==''&&d.taux!=null};
+}
+// Remboursement mois par mois : chaque dette reçoit sa mensualité ; le supplément (et les mensualités libérées) va à la première dette de « ordre »
+function simulerDettes(items,extra,avecSupplement){
+  const ds=items.map(x=>({B:x.B,r:x.r,M:x.M,ok:false})); let mois=0, interets=0;
+  while(ds.some(d=>!d.ok) && mois<600){
+    mois++; let libre=avecSupplement?extra:0;
+    ds.forEach(d=>{ if(d.ok){ if(avecSupplement) libre+=d.M; return; } const i=d.B*d.r; interets+=i; d.B+=i; const p=Math.min(d.M,d.B); d.B-=p; if(avecSupplement && p<d.M) libre+=d.M-p; });
+    for(const d of ds){ if(libre<=0) break; if(d.ok||d.B<=0) continue; const p=Math.min(libre,d.B); d.B-=p; libre-=p; }
+    ds.forEach(d=>{ if(!d.ok && d.B<=0.5){ d.B=0; d.ok=true; } });
+  }
+  return {mois, interets, fini: ds.every(d=>d.ok)};
+}
+function renderDettesOut(C){
+  const A=state.dettes.map((d,idx)=>({...analyseDette(d),idx,nom:d.nom||'(sans nom)',type:d.type}));
+  const moisFr=f=>f.toLocaleDateString('fr-CH',{month:'long',year:'numeric'});
+  A.forEach(a=>{
+    const el=document.getElementById('dette_out_'+a.idx); if(!el) return;
+    let t;
+    if(!a.B) t='<span class="muted">Indiquez le montant restant.</span>';
+    else if(a.type==='hypotheque' && !num(state.dettes[a.idx].mensualite)) t=a.taux?`Intérêts : environ <b>${CHF(a.B*a.taux/100)}/an</b> (${CHF(a.B*a.taux/100/12)}/mois). Remboursement selon le contrat (amortissement).`:'<span class="muted">Indiquez le taux pour estimer les intérêts.</span>';
+    else if(a.infini) t=`<span class="pill red">La mensualité ne couvre pas les intérêts</span> (${CHF(a.B*a.r)}/mois d'intérêts) : la dette ne diminue pas.`;
+    else if(!a.n) t='<span class="muted">Indiquez la mensualité (ou le nombre de mois restants) pour calculer la fin.</span>';
+    else t=`Fin prévue : <b>${moisFr(a.fin)}</b> (${Math.ceil(a.n)} mois)${a.interets!=null?` · intérêts restants : <b>${CHF(a.interets)}</b> · coût total : ${CHF(a.B+a.interets)}`:''}${!a.tauxConnu?' · <span class="muted">taux inconnu : intérêts déduits de la mensualité et de la durée</span>':''}`;
+    el.innerHTML=t;
+  });
+  const conso=A.filter(a=>a.B>0 && a.type!=='hypotheque');
+  const totR=A.reduce((s,a)=>s+a.B,0), totM=A.reduce((s,a)=>s+(a.M||0),0);
+  let tot='';
+  if(A.length){
+    tot=`<div class="info">Total restant : <b>${CHF(totR)}</b> · mensualités : <b>${CHF(totM)}/mois</b>${conso.some(a=>a.interets!=null)?` · intérêts restants (hors hypothèque) : <b>${CHF(conso.reduce((s,a)=>s+(a.interets||0),0))}</b>`:''}.</div>`;
+    const lignesFixes=state.fixes.filter(f=>/leasing|cr[ée]dit|pr[êe]t|hypoth|emprunt|dette/i.test(f.label||''));
+    if(totM>0 && !lignesFixes.length) tot+=`<p class="small muted">💡 Pensez à reporter ces mensualités dans vos <a href="#" onclick="goTab('fixes');return false">🏠 Frais fixes</a> : elles ne sont pas ajoutées automatiquement au budget (pour éviter de les compter deux fois).</p>`;
+  } else tot=`<div class="info">Aucune dette renseignée. 👍</div>`;
+  document.getElementById('dettes_total').innerHTML=tot;
+  // Avalanche
+  const ordre=[...conso].sort((a,b)=>b.taux-a.taux);
+  const extra=Math.max(0,num(state.dettesCfg.extra));
+  setText('dettes_extraHelp', C.reste>0?`Votre budget laisse ${CHF(C.reste)}/mois (onglet ⚖️ Budget)`:'Votre budget ne laisse pas de marge actuellement');
+  document.getElementById('dettes_ordre').innerHTML = ordre.length ? ordre.map((a,i)=>`<tr${i===0?' class="hl"':''}><td>${i+1}.</td><td>${esc(a.nom)} <span class="small muted">${DETTE_TYPES[a.type]||''}</span></td><td class="num">${a.tauxConnu?pct(a.taux):'?'}</td><td class="num">${CHF(a.B)}</td><td class="num">${a.M?CHF(a.M):'–'}</td></tr>`).join('')
+    : `<tr><td colspan="5" class="muted">Aucune dette de consommation (l'hypothèque est traitée à part).</td></tr>`;
+  const sim=ordre.filter(a=>a.M>0);
+  let sh='';
+  if(ordre.some(a=>!a.tauxConnu)) sh+=`<p class="small muted">Les dettes au taux inconnu sont placées en dernier : indiquez le taux (contrat) pour un ordre fiable.</p>`;
+  if(sim.length && extra>0){
+    const base=simulerDettes(sim,0,false), ava=simulerDettes(sim,extra,true);
+    if(base.fini && ava.fini) sh+=`<div class="info">Avec <b>${CHF(extra)}/mois</b> en plus, vous êtes libéré·e de ces dettes en <b>${ava.mois} mois</b> au lieu de ${base.mois}, et vous économisez environ <b>${CHF(base.interets-ava.interets)}</b> d'intérêts.</div>`;
+    else sh+=`<div class="warn">Au moins une mensualité ne couvre pas les intérêts : vérifiez les montants saisis.</div>`;
+  } else if(sim.length) sh+=`<p class="small muted">Indiquez un montant en plus par mois pour voir le temps et les intérêts économisés.</p>`;
+  document.getElementById('dettes_simu').innerHTML=sh;
+  // Rembourser ou investir
+  const r=C.inv.S.ret;
+  const vs=A.filter(a=>a.B>0).map(a=>{
+    let v;
+    if(a.type==='hypotheque') v=`Les intérêts hypothécaires sont déductibles des impôts, et l'amortissement indirect (via un compte 3a nanti) permet de garder cette déduction : rembourser n'est pas forcément prioritaire. À discuter avec votre banque.`;
+    else if(!a.tauxConnu) v=`Taux inconnu : indiquez-le pour comparer.`;
+    else if(a.taux>r) v=`<span class="pill red">Rembourser d'abord</span> Chaque franc remboursé vous « rapporte » ${pct(a.taux)} garantis, plus que le rendement espéré de votre profil (${pct(r)}, sans garantie).`;
+    else v=`<span class="pill orange">À peser</span> Le taux (${pct(a.taux)}) est inférieur au rendement espéré de votre profil (${pct(r)}) : investir peut rapporter plus en moyenne, mais sans garantie, alors que rembourser est un gain sûr.`;
+    return `<tr><td>${esc(a.nom)}<div class="small muted">${DETTE_TYPES[a.type]||''}</div></td><td class="small">${v}</td></tr>`;
+  });
+  document.getElementById('dettes_vs').innerHTML = vs.length ? `<div class="tbl-wrap"><table><tbody>${vs.join('')}</tbody></table></div><p class="small muted">Rendement espéré ${C.inv.provisoire?"d'un profil équilibré (profil investisseur non rempli)":'de votre profil investisseur'} : ${pct(r)} par an. Gardez d'abord votre réserve de sécurité, et vérifiez les frais de remboursement anticipé (leasing).</p>`
+    : `<p class="muted">Aucune dette renseignée.</p>`;
+}
+
 /* =================== COMPTES & FORTUNE =================== */
 function renderComptes(){
   const list=document.getElementById('list_comptes'); list.innerHTML='';
@@ -1812,7 +1943,6 @@ function renderComptes(){
         <option value="epargne" ${it.cat==='epargne'?'selected':''}>Épargne</option>
         <option value="placement" ${it.cat==='placement'?'selected':''}>Placements / titres</option>
         <option value="autre" ${it.cat==='autre'?'selected':''}>Autre actif</option>
-        <option value="dette" ${it.cat==='dette'?'selected':''}>Dette / crédit</option>
       </select></div>
       <div><label>Montant (CHF)</label><input type="number" value="${it.balance}" oninput="updC(${idx},'balance',this.value)"></div>
       <div><button class="del" onclick="delC(${idx})">✕</button></div>`;
@@ -1880,7 +2010,7 @@ function push(){ // écrire state dans les champs
   setV('s_capital',state.strategie.capital); setV('s_mensuel',state.strategie.mensuel);
   for(const g in FIELDS) FIELDS[g].forEach(f=>setV(g+'_'+f,state[g][f]));
   renderQuestions();
-  renderItems('fixes'); renderItems('variables'); renderInsurances(); renderItems('epargne'); renderPilier(); renderComptes(); renderObjectifs(); renderSuiviMois();
+  renderItems('fixes'); renderItems('variables'); renderInsurances(); renderItems('epargne'); renderPilier(); renderComptes(); renderObjectifs(); renderSuiviMois(); renderDettes();
 }
 function setV(id,v){const e=document.getElementById(id); if(e!=null)e.value=(v==null?"":v);}
 function exportData(){
@@ -1981,6 +2111,7 @@ function calc(){
   /* --- Fortune --- */
   let actifs=0,dettes=0;
   state.comptes.forEach(c=>{ if(c.cat==='dette')dettes+=num(c.balance); else actifs+=num(c.balance); });
+  dettes+=state.dettes.reduce((s,d)=>s+num(d.restant),0); // onglet Dettes & leasings
   actifs+=totalPilier;
   setText('f_actifs',CHF(actifs));
   setText('f_dettes',CHF(dettes));
@@ -2038,7 +2169,7 @@ function calc(){
   /* --- Profil investisseur & stratégie (s'appuient sur tout ce qui précède) --- */
   const ctx={netMois,reste,depensesMois,totCash,versement3a,plafond3a:num(state.pilierCfg.plafond),soldeEpargne,
     placements:state.comptes.filter(c=>c.cat==='placement').reduce((s,c)=>s+num(c.balance),0),
-    dettes:state.comptes.filter(c=>c.cat==='dette' && num(c.balance)>0),
+    dettes:state.dettes.filter(d=>num(d.restant)>0).map(d=>({label:d.nom,balance:d.restant,type:d.type,taux:d.taux})),
     impot:x=>taxTotal(x,statut,tauxCC), ecoDeduction, margSaisi, taxable};
   const age=ageActuel();
   setText('perso_ageTxt', age!=null ? `Âge : ${age} ans · sert pour la retraite, l'immobilier et le profil investisseur.` : "Sert pour la retraite, l'immobilier et le profil investisseur.");
@@ -2061,6 +2192,7 @@ function calc(){
   renderImmo(ctx);
   renderSuiviOut(ctx);
   renderHistorique(ctx);
+  renderDettesOut(ctx);
   CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();
@@ -2429,10 +2561,10 @@ function renderStrategie(prof,ctx){
   else if(ctx.reste<0) add('ko',"Remettre le budget à l'équilibre",`Il manque ${CHF(-ctx.reste)} par mois. Avant d'investir, revenez à l'équilibre (onglet ⚖️ Budget).`);
   else add('ok',"Budget à l'équilibre",`Après dépenses et épargne prévue, il vous reste ${CHF(ctx.reste)} par mois.`);
   // 2. Dettes
-  const estHypo=d=>/hypoth/i.test(d.label||'');
+  const estHypo=d=>d.type==='hypotheque' || /hypoth/i.test(d.label||'');
   const conso=ctx.dettes.filter(d=>!estHypo(d)), tConso=conso.reduce((s,d)=>s+num(d.balance),0);
-  if(tConso>0) add('todo',"Rembourser les dettes de consommation",`${CHF(tConso)} (${conso.map(d=>esc(d.label||'dette')).join(', ')}). Un crédit ou un leasing coûte souvent 4 à 10 % par an, plus que ce que rapporte un placement prudent : remboursez-le en priorité si le contrat le permet sans pénalité.`);
-  else add('ok',"Pas de dette de consommation","Aucun crédit ni leasing renseigné dans l'onglet 🏦 Comptes & Fortune.");
+  if(tConso>0) add('todo',"Rembourser les dettes de consommation",`${CHF(tConso)} (${conso.map(d=>esc(d.label||'dette')+(num(d.taux)>0?` à ${pct(num(d.taux))}`:'')).join(', ')}). Un crédit ou un leasing coûte souvent 4 à 10 % par an, plus que ce que rapporte un placement prudent : remboursez-le en priorité si le contrat le permet sans pénalité. Ordre conseillé : onglet 💳 Dettes & leasings.`);
+  else add('ok',"Pas de dette de consommation","Aucun crédit ni leasing renseigné dans l'onglet 💳 Dettes & leasings.");
   if(ctx.dettes.some(estHypo)) add('info',"Hypothèque","Pas forcément à rembourser en priorité : son taux est souvent bas et les intérêts sont déductibles. L'amortissement indirect via le 3a peut être intéressant, à voir avec votre banque.");
   // 3. Réserve de sécurité (6 mois si revenus variables)
   if(ctx.depensesMois>0){
@@ -2517,7 +2649,7 @@ function renderStrategie(prof,ctx){
 // avec ~20 % d'épargne. Sert de point de départ : l'utilisateur n'a plus qu'à adapter.
 function exampleState(){
   const s=blankState();
-  s.revenus={brut:"6200",mois:"13",prime:"",autres:"",social:"13",netManuel:false,netVal:""};
+  s.revenus={brut:"6600",mois:"13",prime:"",autres:"",social:"13",netManuel:false,netVal:""};
   s.fixes=[
     {label:"Loyer (charges comprises)",amount:"1600",freq:"mensuel",pay:"direct"},
     {label:"Électricité",amount:"180",freq:"trimestriel",pay:"souscompte"},
@@ -2526,12 +2658,14 @@ function exampleState(){
     {label:"Serafe (redevance radio-TV)",amount:"335",freq:"annuel",pay:"souscompte"},
     {label:"Abonnement transports publics",amount:"75",freq:"mensuel",pay:"direct"},
     {label:"Abonnement fitness",amount:"80",freq:"mensuel",pay:"direct"},
-    {label:"Streaming (Netflix, Spotify…)",amount:"30",freq:"mensuel",pay:"direct"}
+    {label:"Streaming (Netflix, Spotify…)",amount:"30",freq:"mensuel",pay:"direct"},
+    {label:"Leasing voiture",amount:"290",freq:"mensuel",pay:"direct"},
+    {label:"Crédit meubles",amount:"100",freq:"mensuel",pay:"direct"}
   ];
   s.variables=[
     {label:"Courses alimentaires",amount:"500",freq:"mensuel",pay:"courant"},
-    {label:"Restaurants / sorties",amount:"250",freq:"mensuel",pay:"courant"},
-    {label:"Loisirs / shopping / habits",amount:"150",freq:"mensuel",pay:"courant"},
+    {label:"Restaurants / sorties",amount:"200",freq:"mensuel",pay:"courant"},
+    {label:"Loisirs / shopping / habits",amount:"120",freq:"mensuel",pay:"courant"},
     {label:"Essence / mobilité",amount:"120",freq:"mensuel",pay:"courant"},
     {label:"Santé (pharmacie, franchise)",amount:"80",freq:"mensuel",pay:"courant"},
     {label:"Provision vacances",amount:"200",freq:"mensuel",pay:"souscompte"}
@@ -2550,12 +2684,16 @@ function exampleState(){
   s.comptes=[
     {label:"Compte courant",cat:"courant",balance:"4500"},
     {label:"Compte épargne",cat:"epargne",balance:"15000"},
-    {label:"Placements / titres",cat:"placement",balance:"8000"},
-    {label:"Leasing / crédit voiture",cat:"dette",balance:"6000"}
+    {label:"Placements / titres",cat:"placement",balance:"8000"}
   ];
   s.impots={statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:String(CANTONS.VD[1]),pay:"souscompte"};
   s.budgetModel="503020";
   s.perso={naissance:"1986"};
+  s.dettes=[
+    {nom:"Leasing voiture",type:"leasing",restant:"6000",taux:"4.9",mensualite:"290",duree:""},
+    {nom:"Crédit meubles",type:"credit",restant:"2000",taux:"9.9",mensualite:"100",duree:""}
+  ];
+  s.dettesCfg={extra:"150"};
   s.lpp={avoir:"85000",avoir65:"410000",tauxConv:"5.8",rente65:"",rachatMax:"45000",tauxInteret:"1.5",
     renteInvalidite:"22000",renteEnfantInvalide:"4400",renteConjoint:"13200",renteOrphelin:"4400",capitalDeces:"",
     rachatMontant:"10000",rachatAns:"1",retraitCapital:"non"};
@@ -2564,12 +2702,12 @@ function exampleState(){
     {nom:"Voyage au Japon",cible:"6000",date:dans(10),deja:"1500"},
     {nom:"Nouvelle voiture",cible:"15000",date:dans(32),deja:"2000"}
   ];
-  const prevuEx={revenu:5394,fixes:1983,variables:1300,assurances:535,impots:694,cash:250,troisA:605};
+  const prevuEx={revenu:5742,fixes:2373,variables:1220,assurances:535,impots:751,cash:250,troisA:605};
   s.suivi={
-    [dans(-2)]:{prevu:{...prevuEx},reel:{revenu:"5394",fixes:"1983",variables:"1420",assurances:"535",impots:"694",cash:"250",troisA:"605"}},
-    [dans(-1)]:{prevu:{...prevuEx},reel:{revenu:"5394",fixes:"2010",variables:"1580",assurances:"535",impots:"694",cash:"250",troisA:"605"}}
+    [dans(-2)]:{prevu:{...prevuEx},reel:{revenu:"5742",fixes:"2373",variables:"1290",assurances:"535",impots:"751",cash:"250",troisA:"605"}},
+    [dans(-1)]:{prevu:{...prevuEx},reel:{revenu:"5742",fixes:"2405",variables:"1395",assurances:"535",impots:"751",cash:"250",troisA:"605"}}
   };
-  s.historique=[[-6,27800,7250],[-5,28900,7000],[-4,30100,6750],[-3,29600,6500],[-2,31400,6250],[-1,32500,6000]].map(([m,n,d])=>
+  s.historique=[[-6,25800,10000],[-5,26900,9600],[-4,28100,9200],[-3,27600,8800],[-2,29400,8400],[-1,30500,8000]].map(([m,n,d])=>
     ({mois:dans(m),date:dans(m)+'-25',actifs:n+d,dettes:d,nette:n}));
   s.immo={prix:"650000",revenu:"",date:dans(48),cash:"",troisA:"",lpp:""};
   s.retraite={age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""};

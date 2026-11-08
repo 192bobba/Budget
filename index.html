@@ -86,10 +86,11 @@
   nav.steps button.active{background:var(--rouge);border-color:var(--rouge);color:#fff}
   nav.steps button.active .n{color:var(--rouge);border-color:#fff}
   nav.tabs.hidden{display:none}
+  nav.steps .short{display:none}
   @media(max-width:720px){header{position:static}
     nav.steps{flex-wrap:nowrap;overflow-x:auto;padding:0 12px 10px;gap:5px}
     nav.steps button{flex:none;font-size:12.5px;padding:5px 9px 5px 4px;gap:6px}
-    nav.steps .long{display:none}}
+    nav.steps .long{display:none} nav.steps .short{display:inline}}
 
   /* Questionnaire */
   .q{padding:14px 0;border-top:1px solid var(--bord)}
@@ -234,6 +235,14 @@
           <div class="inline-help">Laissez vide pour l'estimer automatiquement</div>
         </div>
       </div>
+      <hr class="hr">
+      <div class="grid g3">
+        <div>
+          <label>Votre année de naissance</label>
+          <input type="number" id="perso_naissance" placeholder="1985" oninput="onNaissance()">
+          <div class="inline-help" id="perso_ageTxt"></div>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -314,15 +323,15 @@
       <div class="grid g4">
         <div>
           <label>Situation de prévoyance</label>
-          <select id="p_type" onchange="calc()">
+          <select id="p_type" onchange="onPilierTypeChange()">
             <option value="caisse">Salarié·e avec caisse de pension (2ᵉ pilier)</option>
             <option value="sans">Sans 2ᵉ pilier (indépendant·e)</option>
           </select>
         </div>
         <div>
           <label>Plafond 3a déductible / an (CHF)</label>
-          <input type="number" id="p_plafond" value="7258" oninput="calc()">
-          <div class="inline-help">2025 : 7'258.– avec caisse · 20 % du revenu (max 36'288.–) sans caisse</div>
+          <input type="number" id="p_plafond" oninput="calc()">
+          <div class="inline-help" id="p_plafondHelp"></div>
         </div>
         <div>
           <label>Versement 3a prévu cette année (CHF)</label>
@@ -611,6 +620,72 @@
 </footer>
 
 <script>
+/* =================== PARAMÈTRES LÉGAUX ET HYPOTHÈSES =================== */
+// TOUTES les valeurs légales (plafonds, rentes, taux, seuils) et les hypothèses de calcul sont ici,
+// pour pouvoir les mettre à jour en un seul endroit chaque année.
+// « À VÉRIFIER » = valeur que je n'ai pas pu confirmer avec certitude auprès d'une source officielle.
+const LEGAL={
+  annee:2026,
+  avs:{
+    // Rentes AVS/AI 2026 (inchangées depuis le 1.1.2025). Sources : OFAS « Montants 2026 », CNCI, PwC.
+    renteMin:1260, renteMax:2520,          // CHF/mois, rente complète (échelle 44)
+    plafondCouple:3780,                    // somme des rentes d'un couple marié (150 % de la rente max)
+    ramMax:90720,                          // revenu annuel moyen donnant la rente max — À VÉRIFIER (connu, non revérifié à la source)
+    // Formule de la rente complète (art. 34 LAVS) : jusqu'à 36 × rente min de revenu annuel moyen :
+    // 74 % de la rente min + 13/600 du revenu ; au-delà : 104 % de la rente min + 8/600 du revenu. — À VÉRIFIER
+    anneesCompletes:44,                    // années de cotisation pour une rente complète
+    treiziemeRente:true,                   // 13e rente AVS = 1/12 de la rente annuelle, dès déc. 2026 (vieillesse seulement, pas AI). Source : OFAS / AHV-IV
+    ageReference:65,
+    anticipationMaxAns:2, reductionAnticipationParAn:6.8, // % par année d'anticipation (taux ordinaire) — À VÉRIFIER : taux réduits pour
+                                           // les femmes de la génération transitoire (1961-1969), nouveaux taux possibles dès 2027
+    ajournementMaxAns:5, supplementAjournement:[0,5.2,10.8,17.1,24.0,31.5], // % selon le nombre d'années d'ajournement — À VÉRIFIER
+    renteVeuvage:80, renteOrphelin:40,     // % de la rente de référence — À VÉRIFIER (réforme des rentes de veuf/veuve en cours)
+    renteEnfantAI:40                       // % de la rente AI par enfant — À VÉRIFIER
+  },
+  lpp:{
+    // Valeurs limites LPP 2026 (inchangées depuis 2025). Source : OFAS « Valeurs limites 2025/2026 », Allianz.
+    seuilEntree:22680, deductionCoordination:26460, salaireMax:90720,
+    tauxConversionMin:6.8,                 // % (minimum légal sur la part obligatoire)
+    tauxInteretMin:1.25,                   // % en 2026 ; 2,0 % dès le 1.1.2027 (décision du Conseil fédéral du 4.11.2026)
+    blocageRachatAns:3                     // pas de retrait en capital dans les 3 ans qui suivent un rachat (art. 79b LPP)
+  },
+  pilier3a:{
+    // Plafonds 2026. Sources : OFAS, UBS. 2027 annoncé à 7'373 / 36'864 (non confirmé).
+    avecCaisse:7258, sansCaissePct:20, sansCaisseMax:36288
+  },
+  impots:{
+    // Impôt fédéral direct (barème art. 36 LIFD) : [seuil, impôt au seuil, taux marginal %] — valeurs ~2024, À VÉRIFIER pour 2026
+    ifdSeul:[[0,0,0],[14800,0,0.77],[32200,134.05,0.88],[42200,222.05,2.64],[56200,591.65,2.97],
+      [73900,1117.30,5.94],[79600,1455.85,6.60],[105500,3165.25,8.80],[137300,5963.65,11.00],[179400,10594.65,13.20]],
+    ifdSeulPlafond:783200,                 // au-delà : 11,5 % du revenu
+    ifdCouple:[[0,0,0],[28800,0,1],[51400,226,2],[59000,378,3],[76100,891,4],[92400,1543,5],
+      [107600,2303,6],[121200,3119,7],[133400,3973,8],[143800,4805,9],[152500,5588,10],
+      [159700,6308,11],[165400,6935,12],[169700,7451,13]],
+    ifdCouplePlafond:901800,
+    deductionEnfant:6700                   // déduction indicative par enfant (IFD) — À VÉRIFIER
+  },
+  immo:{
+    // Pratique des banques suisses (directives ASB / FINMA) — hypothèses usuelles, varient selon la banque
+    fondsPropresMin:20,                    // % du prix
+    fondsPropresHorsLPPMin:10,             // % du prix qui ne doit pas venir de la caisse de pension (fonds propres « durs »)
+    tauxTheorique:5,                       // % : taux d'intérêt théorique utilisé pour tester la capacité
+    entretien:1,                           // % du prix par an (frais accessoires et entretien)
+    chargesMax:33.33,                      // % du revenu brut que les charges théoriques ne doivent pas dépasser
+    hypothequeCible:66.67,                 // % du prix : 2e rang à amortir jusqu'à ce niveau…
+    amortissementAns:15,                   // … en 15 ans (au plus tard à la retraite)
+    fraisAchat:3                           // % du prix : notaire, registre foncier, droits de mutation (varie selon le canton)
+  },
+  hypotheses:{
+    // Hypothèses de calcul (pas des valeurs légales), à adapter
+    impotRetraitCapital:7,                 // % : impôt sur le retrait en capital (2e/3e pilier), très variable selon canton et montant
+    dureeCapitalRetraite:25,               // années sur lesquelles un capital est consommé à la retraite
+    rendementPendantRetraite:1.5,          // % par an sur le capital restant pendant la retraite
+    rendement3aBancaire:0.5,               // % : compte 3a bancaire
+    tauxRemplacementCible:80,              // % du revenu actuel souvent jugé suffisant à la retraite
+    reductionConversionParAnAnticipe:0.2   // points de % en moins sur le taux de conversion LPP par année d'anticipation (varie selon la caisse)
+  }
+};
+
 /* =================== ÉTAT =================== */
 const FREQ = {mensuel:12, hebdomadaire:52, trimestriel:4, semestriel:2, annuel:1};
 const FREQ_LABEL = {mensuel:"Mensuel", hebdomadaire:"Hebdomadaire", trimestriel:"Trimestriel", semestriel:"Semestriel", annuel:"Annuel"};
@@ -649,18 +724,22 @@ function blankState(){
   return {
     revenus:{brut:"",mois:"12",prime:"",autres:"",social:"13",netManuel:false,netVal:""},
     fixes:[], variables:[], assurances:[], epargne:[], pilier:[], comptes:[],
-    pilierCfg:{type:"caisse",plafond:"7258",versement:"",pay:"direct"},
+    pilierCfg:{type:"caisse",plafond:String(LEGAL.pilier3a.avecCaisse),versement:"",pay:"direct"},
     impots:{statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:"",pay:"souscompte"},
     budgetModel:"503020",
     profil:{},                          // réponses au questionnaire investisseur { idQuestion: valeur }
-    strategie:{capital:"",mensuel:""}   // montants à investir saisis à la main (vide = calcul automatique)
+    strategie:{capital:"",mensuel:""},  // montants à investir saisis à la main (vide = calcul automatique)
+    perso:{naissance:""}
   };
 }
+// Champs simples des nouvelles sections : l'id HTML est « groupe_champ » (ex. perso_naissance).
+// Ils sont lus / écrits automatiquement par pull() et push(), donc sauvegardés, exportés et importés.
+const FIELDS={perso:['naissance']};
 // Complète un état chargé (ancienne sauvegarde, fichier importé) avec les champs ajoutés depuis.
 function normalizeState(s){
   const b=blankState();
   s=Object.assign(b,s||{});
-  ['revenus','pilierCfg','impots','strategie'].forEach(k=>{ s[k]=Object.assign(blankState()[k], s[k]||{}); });
+  ['revenus','pilierCfg','impots','strategie',...Object.keys(FIELDS)].forEach(k=>{ s[k]=Object.assign(blankState()[k], s[k]||{}); });
   s.profil = (s.profil && typeof s.profil==='object') ? Object.assign({},s.profil) : {};
   ['fixes','variables','assurances','epargne','pilier','comptes'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   // Anciennes données sans mode de paiement : mensuel → prélevé directement, sinon → sous-compte
@@ -674,25 +753,31 @@ function normalizeState(s){
 }
 
 /* =================== TABS =================== */
-// Trois étapes : ① le budget (plusieurs onglets), ② le profil investisseur, ③ la stratégie
-const STEPS = [[1,"Mon budget"],[2,"Mon profil"," d'investisseur"],[3,"Ma stratégie"]]; // 3ᵉ élément : masqué sur mobile
+// Les étapes du parcours ; chaque onglet appartient à une étape (3e élément de TABS).
+// [numéro, libellé long (ordinateur), libellé court (mobile)]. Une étape sans onglet n'est pas affichée.
+const STEPS = [[1,"Mon budget","Budget"],[2,"Mon patrimoine","Patrimoine"],[3,"Ma prévoyance","Prévoyance"],
+  [4,"Mes projets","Projets"],[5,"Mon profil d'investisseur","Profil"],[6,"Ma stratégie","Stratégie"]];
 const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["variables","🛒 Frais variables",1],
-  ["assurances","🛡️ Assurances",1],["epargne","🐷 Épargne",1],["pilier","🌳 3ᵉ pilier",1],["fortune","🏦 Comptes & Fortune",1],
-  ["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],
-  ["profil","🧑‍💼 Profil investisseur",2],["strategie","🧭 Stratégie",3]];
-const lastTab = {1:"revenus",2:"profil",3:"strategie"}; // dernier onglet ouvert dans chaque étape
+  ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],
+  ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],
+  ["pilier","🌳 3ᵉ pilier",3],
+  ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6]];
+const lastTab = {}; // dernier onglet ouvert dans chaque étape
 function buildTabs(){
-  const steps=document.getElementById('steps');
-  STEPS.forEach(([n,lbl,suite])=>{
+  const stepsNav=document.getElementById('steps');
+  let i=0;
+  STEPS.forEach(([n,lbl,court])=>{
+    const tabs=TABS.filter(t=>t[2]===n); if(!tabs.length) return;
+    lastTab[n]=tabs[0][0]; i++;
     const b=document.createElement('button');
-    b.innerHTML=`<span class="n">${n}</span>${lbl}${suite?`<span class="long">${suite}</span>`:''}`; b.dataset.step=n;
+    b.innerHTML=`<span class="n">${i}</span><span class="long">${lbl}</span><span class="short">${court}</span>`; b.dataset.step=n;
     b.onclick=()=>goTab(lastTab[n]);
-    steps.appendChild(b);
+    stepsNav.appendChild(b);
   });
   const nav=document.getElementById('tabs');
-  TABS.filter(t=>t[2]===1).forEach(([id,lbl])=>{
+  TABS.forEach(([id,lbl,step])=>{
     const b=document.createElement('button');
-    b.textContent=lbl; b.dataset.tab=id;
+    b.textContent=lbl; b.dataset.tab=id; b.dataset.step=step;
     b.onclick=()=>goTab(id);
     nav.appendChild(b);
   });
@@ -702,9 +787,13 @@ function buildTabs(){
 function goTab(id,noScroll){
   const step=(TABS.find(t=>t[0]===id)||TABS[0])[2];
   lastTab[step]=id;
-  document.querySelectorAll('nav.steps button').forEach(x=>x.classList.toggle('active',+x.dataset.step===step));
-  document.getElementById('tabs').classList.toggle('hidden',step!==1);
-  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+  document.querySelectorAll('nav.steps button').forEach(x=>{
+    const on=+x.dataset.step===step; x.classList.toggle('active',on);
+    if(on && x.parentElement.scrollWidth>x.parentElement.clientWidth) x.parentElement.scrollLeft=x.offsetLeft-12; // mobile : étape visible
+  });
+  const nav=document.getElementById('tabs');
+  nav.classList.toggle('hidden',TABS.filter(t=>t[2]===step).length<2); // pas de sous-onglets si l'étape n'en a qu'un
+  nav.querySelectorAll('button').forEach(x=>{ x.hidden=+x.dataset.step!==step; x.classList.toggle('active',x.dataset.tab===id); });
   document.querySelectorAll('.tab-page').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
   if(!noScroll) window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -714,6 +803,10 @@ const CHF = n => "CHF "+ (Math.round(n)).toLocaleString('fr-CH').replace(/ /g,
 const signed = n => (n<0?"− ":"+ ")+CHF(Math.abs(n));
 const num = v => { const n=parseFloat(v); return isNaN(n)?0:n; };
 const pct = n => (n).toLocaleString('fr-CH',{maximumFractionDigits:1})+" %";
+// Âge à partir de l'année de naissance (onglet Revenus) ; null si non renseignée
+function ageActuel(){ const y=num(state.perso&&state.perso.naissance), now=new Date().getFullYear(); return (y>1900&&y<=now)?now-y:null; }
+function trancheAge(a){ return a<30?'u30':a<45?'30-44':a<55?'45-54':a<65?'55-64':'65+'; }
+function onNaissance(){ calc(); renderQuestions(); }
 function monthlyOf(item){ return num(item.amount)*FREQ[item.freq||'mensuel']/12; }
 
 /* =================== LISTES DYNAMIQUES (frais) =================== */
@@ -820,6 +913,13 @@ function updIns(idx,field,val){
 }
 
 /* =================== 3e PILIER =================== */
+function plafond3aDefaut(type){
+  const L=LEGAL.pilier3a;
+  if(type!=='sans') return L.avecCaisse;
+  const brutAn=num(state.revenus.brut)*(num(state.revenus.mois)||12)+num(state.revenus.prime);
+  return brutAn>0 ? Math.min(L.sansCaisseMax, Math.round(brutAn*L.sansCaissePct/100)) : L.sansCaisseMax;
+}
+function onPilierTypeChange(){ pull(); setV('p_plafond',plafond3aDefaut(state.pilierCfg.type)); calc(); }
 function renderPilier(){
   const list=document.getElementById('list_pilier'); list.innerHTML='';
   state.pilier.forEach((it,idx)=>{
@@ -874,21 +974,13 @@ function onCantonChange(){
   state.impots.tauxCanton = CANTONS[c][1];
   calc();
 }
-// Impôt fédéral direct (barème art.36 LIFD, valeurs ~2024) — estimation
+// Impôt fédéral direct (barème dans LEGAL.impots) — estimation
 function ifd(taxable, statut){
   if(taxable<=0) return 0;
-  let b; // [seuil, impôt de base au seuil, taux marginal %]
-  if(statut==='couple'){
-    if(taxable>901800) return taxable*0.115;
-    b=[[0,0,0],[28800,0,1],[51400,226,2],[59000,378,3],[76100,891,4],[92400,1543,5],
-       [107600,2303,6],[121200,3119,7],[133400,3973,8],[143800,4805,9],[152500,5588,10],
-       [159700,6308,11],[165400,6935,12],[169700,7451,13]];
-  } else {
-    if(taxable>783200) return taxable*0.115;
-    b=[[0,0,0],[14800,0,0.77],[32200,134.05,0.88],[42200,222.05,2.64],[56200,591.65,2.97],
-       [73900,1117.30,5.94],[79600,1455.85,6.60],[105500,3165.25,8.80],[137300,5963.65,11.00],
-       [179400,10594.65,13.20]];
-  }
+  const L=LEGAL.impots;
+  const couple=statut==='couple';
+  if(taxable>(couple?L.ifdCouplePlafond:L.ifdSeulPlafond)) return taxable*0.115;
+  const b=couple?L.ifdCouple:L.ifdSeul; // [seuil, impôt de base au seuil, taux marginal %]
   let r=b[0];
   for(const row of b){ if(taxable>=row[0]) r=row; else break; }
   return r[1] + (taxable-r[0])*r[2]/100;
@@ -912,6 +1004,7 @@ function pull(){ // lire les champs simples dans state
   state.impots={statut:val('i_statut'),canton:val('i_canton'),enfants:val('i_enfants'),
     revenu:val('i_revenu'),deductions:val('i_deductions'),tauxCanton:val('i_tauxCanton'),pay:val('i_pay')};
   state.strategie={capital:val('s_capital'),mensuel:val('s_mensuel')};
+  for(const g in FIELDS){ state[g]=state[g]||{}; FIELDS[g].forEach(f=>{ state[g][f]=val(g+'_'+f); }); }
 }
 function val(id){const e=document.getElementById(id); return e?e.value:"";}
 function push(){ // écrire state dans les champs
@@ -925,6 +1018,7 @@ function push(){ // écrire state dans les champs
   setV('i_tauxCanton',state.impots.tauxCanton||CANTONS[state.impots.canton][1]);
   setV('i_pay',state.impots.pay);
   setV('s_capital',state.strategie.capital); setV('s_mensuel',state.strategie.mensuel);
+  for(const g in FIELDS) FIELDS[g].forEach(f=>setV(g+'_'+f,state[g][f]));
   renderQuestions();
   renderItems('fixes'); renderItems('variables'); renderInsurances(); renderItems('epargne'); renderPilier(); renderComptes();
 }
@@ -997,7 +1091,7 @@ function calc(){
   let revImp = num(state.impots.revenu)>0 ? num(state.impots.revenu) : netAnnuel;
   const versement3a=Math.min(num(state.pilierCfg.versement), num(state.pilierCfg.plafond)||Infinity);
   const enfants=num(state.impots.enfants);
-  const deducEnfants=enfants*6700; // déduction sociale indicative IFD ~6'700/enfant
+  const deducEnfants=enfants*LEGAL.impots.deductionEnfant; // déduction sociale indicative par enfant
   const autresDe=num(state.impots.deductions);
   const tauxCC=num(state.impots.tauxCanton||CANTONS[state.impots.canton][1]);
   const taxable=Math.max(0, revImp - versement3a - deducEnfants - autresDe);
@@ -1083,12 +1177,20 @@ function calc(){
     placements:state.comptes.filter(c=>c.cat==='placement').reduce((s,c)=>s+num(c.balance),0),
     dettes:state.comptes.filter(c=>c.cat==='dette' && num(c.balance)>0),
     impot:x=>taxTotal(x,statut,tauxCC), taxable};
+  const age=ageActuel();
+  setText('perso_ageTxt', age!=null ? `Âge : ${age} ans · sert pour la retraite, l'immobilier et le profil investisseur.` : "Sert pour la retraite, l'immobilier et le profil investisseur.");
+  if(age!=null) state.profil.age=trancheAge(age); // le profil reprend l'âge au lieu de le redemander
   const prof=computeProfile(state.profil,ctx);
+  Object.assign(ctx,{prof, age, netAnnuel, brutAnnuel, salaireVerse, totalPilier, actifs, dettesTotal:dettes, statut, tauxCC, enfants,
+    impotsMois, epargne3aMois, totFixes, totVar, totAss});
+  ctx.inv=computeInvest(prof,ctx);
   renderProfilResult(prof);
   renderStrategie(prof,ctx);
+  CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();
 }
+let CTX=null;
 function sumMonthly(list){ return list.reduce((s,i)=>s+monthlyOf(i),0); }
 
 /* =================== ÉPARGNE : RÉSERVE DE SÉCURITÉ =================== */
@@ -1352,11 +1454,13 @@ function renderQuestions(){
   QUESTIONS.forEach(q=>{
     if(q.sec){ html+=(html?'</div>':'')+`<div class="card"><h2>${q.sec}</h2>`; first=true; return; }
     n++;
-    const v=state.profil[q.id];
+    const auto = q.id==='age' && ageActuel()!=null; // âge déjà connu par l'année de naissance
+    const v = auto ? trancheAge(ageActuel()) : state.profil[q.id];
+    const help = auto ? "Déduit de votre année de naissance (onglet 💰 Revenus)." : q.help;
     html+=`<div class="q${first?' first':''}">
       <div class="q-title"><span class="q-num">${n}</span><span>${q.q}</span></div>
-      ${q.help?`<div class="inline-help">${q.help}</div>`:''}
-      <div class="q-opts">${q.opts.map(([val,lbl])=>`<label class="q-opt${v===val?' sel':''}"><input type="radio" name="q_${q.id}" value="${val}"${v===val?' checked':''} onchange="setProfil('${q.id}',this.value)">${lbl}</label>`).join('')}</div>
+      ${help?`<div class="inline-help">${help}</div>`:''}
+      <div class="q-opts">${q.opts.map(([val,lbl])=>`<label class="q-opt${v===val?' sel':''}"><input type="radio" name="q_${q.id}" value="${val}"${v===val?' checked':''}${auto?' disabled':''} onchange="setProfil('${q.id}',this.value)">${lbl}</label>`).join('')}</div>
     </div>`;
     first=false;
   });
@@ -1397,6 +1501,25 @@ function stackBar(barId,legendId,segs){
   }).join('') : '';
   document.getElementById(legendId).innerHTML=segs.map(s=>`<span style="display:inline-block;margin-right:14px"><span class="swatch" style="background:${s.color}"></span>${s.label}</span>`).join('');
 }
+// Montants à investir et répartition : partagés par le plan d'action, la retraite et le bilan.
+// Sans profil complet, on suppose provisoirement un profil « Équilibré ».
+function computeInvest(prof,ctx){
+  const p=state.profil, provisoire=!prof.complete;
+  const P=PROFILES[provisoire?3:prof.level];
+  const courtTerme=!provisoire && +p.horizon===1;
+  const alloc=courtTerme ? ALLOC_COURT_TERME : P.alloc;
+  const S=portfolioStats(alloc);
+  // Réserve de sécurité : 3 mois de dépenses (6 si revenus variables)
+  const moisRes=['variable','incertain'].includes(p.revenus)?6:3, cible=ctx.depensesMois*moisRes;
+  const reserveOk=ctx.soldeEpargne>=cible;
+  // Tant que la réserve n'est pas complète, elle reçoit le virement d'épargne cash (ou, à défaut, le reste du budget)
+  const versReserve = reserveOk ? 0 : (ctx.totCash>0 ? ctx.totCash : Math.max(0,ctx.reste));
+  const autoCap=Math.max(0,ctx.soldeEpargne-cible)+ctx.placements;
+  const autoMens=Math.max(0, ctx.totCash+Math.max(0,ctx.reste)-versReserve);
+  const capital=state.strategie.capital!=='' ? num(state.strategie.capital) : autoCap;
+  const mensuel=state.strategie.mensuel!=='' ? num(state.strategie.mensuel) : autoMens;
+  return {provisoire,P,courtTerme,alloc,S,moisRes,cible,reserveOk,versReserve,autoCap,autoMens,capital,mensuel};
+}
 function renderStrategie(prof,ctx){
   const inc=document.getElementById('s_incomplete'), main=document.getElementById('s_main');
   if(!prof.complete){
@@ -1404,10 +1527,8 @@ function renderStrategie(prof,ctx){
     main.style.display='none'; return;
   }
   inc.innerHTML=''; main.style.display='';
-  const p=state.profil, P=PROFILES[prof.level];
-  const courtTerme = +p.horizon===1;
-  const alloc = courtTerme ? ALLOC_COURT_TERME : P.alloc;
-  const S=portfolioStats(alloc);
+  const p=state.profil;
+  const {P,courtTerme,alloc,S,moisRes,cible,reserveOk,versReserve,autoCap,autoMens,capital,mensuel}=ctx.inv;
 
   /* --- Profil --- */
   setText('s_name',P.name);
@@ -1439,10 +1560,6 @@ function renderStrategie(prof,ctx){
   else add('ok',"Pas de dette de consommation","Aucun crédit ni leasing renseigné dans l'onglet 🏦 Comptes & Fortune.");
   if(ctx.dettes.some(estHypo)) add('info',"Hypothèque","Pas forcément à rembourser en priorité : son taux est souvent bas et les intérêts sont déductibles. L'amortissement indirect via le 3a peut être intéressant, à voir avec votre banque.");
   // 3. Réserve de sécurité (6 mois si revenus variables)
-  const moisRes=['variable','incertain'].includes(p.revenus)?6:3, cible=ctx.depensesMois*moisRes;
-  const reserveOk=ctx.soldeEpargne>=cible;
-  // Tant que la réserve n'est pas complète, elle reçoit le virement d'épargne cash (ou, à défaut, le reste du budget)
-  const versReserve = reserveOk ? 0 : (ctx.totCash>0 ? ctx.totCash : Math.max(0,ctx.reste));
   if(ctx.depensesMois>0){
     if(reserveOk) add('ok',"Réserve de sécurité constituée",`${CHF(ctx.soldeEpargne)} d'épargne, pour un objectif de ${moisRes} mois de dépenses (${CHF(cible)}).`);
     else { const manque=cible-ctx.soldeEpargne;
@@ -1459,10 +1576,6 @@ function renderStrategie(prof,ctx){
     add('todo',"Investir votre 3a en titres",`Avec votre horizon et un profil ${P.name.toLowerCase()}, un 3a en fonds ou ETF (environ ${S.actions} % d'actions) a un potentiel bien supérieur à un 3a bancaire, rémunéré autour de 0 à 1 %.`);
   if(p.age==='55-64') add('info',"Préparer les retraits du 3a","Ouvrez plusieurs comptes 3a et retirez-les sur plusieurs années : l'impôt sur les retraits en capital est progressif.");
   // 5. Investir le surplus
-  const autoCap=Math.max(0,ctx.soldeEpargne-cible)+ctx.placements;
-  const autoMens=Math.max(0, ctx.totCash+Math.max(0,ctx.reste)-versReserve);
-  const capital=state.strategie.capital!=='' ? num(state.strategie.capital) : autoCap;
-  const mensuel=state.strategie.mensuel!=='' ? num(state.strategie.mensuel) : autoMens;
   setText('s_capitalHelp',`Auto : ${CHF(autoCap)} = épargne au-delà de la réserve (${CHF(Math.max(0,ctx.soldeEpargne-cible))}) + placements existants (${CHF(ctx.placements)}).`);
   setText('s_mensuelHelp', reserveOk
     ? `Auto : ${CHF(autoMens)} = virement d'épargne cash (${CHF(ctx.totCash)}) + reste du budget (${CHF(Math.max(0,ctx.reste))}).`
@@ -1553,7 +1666,7 @@ function exampleState(){
   s.epargne=[
     {label:"Compte épargne (on n'y touche pas)",amount:"250",freq:"mensuel"}
   ];
-  s.pilierCfg={type:"caisse",plafond:"7258",versement:"7258",pay:"direct"};
+  s.pilierCfg={type:"caisse",plafond:String(LEGAL.pilier3a.avecCaisse),versement:String(LEGAL.pilier3a.avecCaisse),pay:"direct"};
   s.pilier=[{label:"Ex. VIAC / Frankly",kind:"titres",balance:"12000"}];
   s.comptes=[
     {label:"Compte courant",cat:"courant",balance:"4500"},
@@ -1563,6 +1676,7 @@ function exampleState(){
   ];
   s.impots={statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:String(CANTONS.VD[1]),pay:"souscompte"};
   s.budgetModel="503020";
+  s.perso={naissance:"1986"};
   s.profil={age:"30-44",objectif:"croissance",horizon:"4",besoin:"peu",revenus:"stable",connaissances:"bases",
     experience:"3a",reaction:"2",perte:"2",portefeuille:"2",esg:"oui"};
   return s;
@@ -1577,6 +1691,9 @@ function loadExample(){
 function init(){
   buildTabs();
   buildCantonSelect();
+  const L3=LEGAL.pilier3a;
+  setText('p_plafondHelp',`${LEGAL.annee} : ${CHF(L3.avecCaisse)} avec caisse de pension · ${L3.sansCaissePct} % du revenu (max ${CHF(L3.sansCaisseMax)}) sans caisse`);
+  document.getElementById('p_versement').placeholder=L3.avecCaisse;
   const saved=localStorage.getItem(LS_KEY);
   if(saved){ try{ state=normalizeState(JSON.parse(saved)); }catch(e){ state=exampleState(); } }
   else { state=exampleState(); } // 1re ouverture : on pré-remplit avec l'exemple

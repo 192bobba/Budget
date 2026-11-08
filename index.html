@@ -71,6 +71,8 @@
   .obj-out{grid-column:1/-1;font-size:13px}
   .prog{height:10px;background:var(--bg);border-radius:6px;overflow:hidden;margin:4px 0 6px}
   .prog>div{height:100%;background:var(--vert);border-radius:6px;transition:width .3s}
+  .suivi-in{width:110px;min-width:90px;margin-left:auto;padding:6px 8px}
+  @media(max-width:720px){.hide-m{display:none}.suivi-in{width:80px;min-width:70px}}
   .row-hint{grid-column:1/-1;font-size:12.5px;background:var(--orange-bg);color:#92520a;border-radius:8px;padding:7px 10px}
   .row-hint:empty{display:none}
   .row-hint button{padding:3px 9px;font-size:12px;margin-left:6px;background:#fff;border:1px solid #f5d9a8;color:#92520a}
@@ -586,6 +588,32 @@
     <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> Règles usuelles des banques suisses (taux théorique, amortissement, frais d'entretien), qui varient selon l'établissement. Utiliser sa caisse de pension (EPL) réduit ses rentes de retraite, d'invalidité et de décès, et le retrait est imposé ; après 50 ans, le montant utilisable est limité. Demandez une offre à plusieurs banques.</div>
   </section>
 
+  <!-- ============ SUIVI RÉEL VS PRÉVU ============ -->
+  <section class="tab-page" data-tab="suivi">
+    <div class="card">
+      <h2>📒 Suivi du mois : réel ou prévu ?</h2>
+      <p class="sub">Une fois par mois, reportez ce que vous avez <b>réellement</b> reçu et dépensé (relevés de compte, e-banking). Le « prévu » vient de votre budget ; il est mémorisé pour ce mois dès la première saisie.</p>
+      <div class="grid g3">
+        <div><label>Mois</label><select id="suivi_mois" onchange="choisirMoisSuivi(this.value)"></select></div>
+        <div style="align-self:end"><button class="btn-ghost btn-sm" onclick="majPrevuSuivi()">🔄 Reprendre le budget actuel comme « prévu »</button></div>
+      </div>
+      <div class="tbl-wrap" style="margin-top:14px"><table>
+        <thead><tr><th>Catégorie</th><th class="num">Prévu</th><th class="num">Réel</th><th class="num hide-m">Écart</th><th class="num">Écart %</th></tr></thead>
+        <tbody id="suivi_rows"></tbody>
+      </table></div>
+      <div id="suivi_resume" style="margin-top:12px"></div>
+      <p class="small muted">Couleurs : <span class="pill green">dans le budget</span> <span class="pill orange">jusqu'à 10 % d'écart</span> <span class="pill red">plus de 10 %</span> (pour les revenus et l'épargne, c'est l'inverse : plus, c'est mieux).</p>
+    </div>
+    <div class="card">
+      <h2>🗂️ Historique des mois</h2>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Mois</th><th class="num">Dépenses prévues</th><th class="num">Dépenses réelles</th><th class="num">Écart</th><th class="num">Épargne réelle</th><th class="num">Taux d'épargne</th><th></th></tr></thead>
+        <tbody id="suivi_hist"></tbody>
+      </table></div>
+    </div>
+    <div class="edu">ℹ️ <b>Suivi simplifié, à but éducatif.</b> Les comparaisons se font par grande catégorie. Le « revenu prévu » est le salaire versé chaque mois (sans 13ᵉ ni prime) : le mois du 13ᵉ, le réel sera logiquement plus élevé.</div>
+  </section>
+
   <!-- ============ COMPTES & FORTUNE ============ -->
   <section class="tab-page" data-tab="fortune">
     <div class="card">
@@ -954,6 +982,7 @@ function blankState(){
     revenus:{brut:"",mois:"12",prime:"",autres:"",social:"13",netManuel:false,netVal:""},
     fixes:[], variables:[], assurances:[], epargne:[], pilier:[], comptes:[],
     objectifs:[],                       // [{nom, cible, date:'AAAA-MM', deja}]
+    suivi:{},                           // { 'AAAA-MM': {prevu:{catégorie:montant}, reel:{catégorie:montant}} }
     pilierCfg:{type:"caisse",plafond:String(LEGAL.pilier3a.avecCaisse),versement:"",pay:"direct"},
     impots:{statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:"",pay:"souscompte",marginal:""},
     budgetModel:"503020",
@@ -979,6 +1008,8 @@ function normalizeState(s){
   s=Object.assign(b,s||{});
   ['revenus','pilierCfg','impots','strategie',...Object.keys(FIELDS)].forEach(k=>{ s[k]=Object.assign(blankState()[k], s[k]||{}); });
   s.profil = (s.profil && typeof s.profil==='object') ? Object.assign({},s.profil) : {};
+  s.suivi = (s.suivi && typeof s.suivi==='object' && !Array.isArray(s.suivi)) ? s.suivi : {};
+  for(const k in s.suivi){ const r=s.suivi[k]; if(!r||typeof r!=='object'){ delete s.suivi[k]; continue; } r.prevu=r.prevu||{}; r.reel=r.reel||{}; }
   ['fixes','variables','assurances','epargne','pilier','comptes','objectifs'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   // Anciennes données sans mode de paiement : mensuel → prélevé directement, sinon → sous-compte
   const mensuel = it => FREQ[it.freq||'mensuel']>=12;
@@ -996,7 +1027,7 @@ function normalizeState(s){
 const STEPS = [[1,"Mon budget","Budget"],[2,"Mon patrimoine","Patrimoine"],[3,"Ma prévoyance","Prévoyance"],
   [4,"Mes projets","Projets"],[5,"Mon profil d'investisseur","Profil"],[6,"Ma stratégie","Stratégie"]];
 const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["variables","🛒 Frais variables",1],
-  ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],
+  ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],["suivi","📒 Suivi réel",1],
   ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],
   ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],["retraite","🏖️ Retraite",3],
   ["objectifs","🎯 Objectifs de vie",4],["immo","🏡 Achat immobilier",4],
@@ -1033,6 +1064,8 @@ function goTab(id,noScroll){
   const nav=document.getElementById('tabs');
   nav.classList.toggle('hidden',TABS.filter(t=>t[2]===step).length<2); // pas de sous-onglets si l'étape n'en a qu'un
   nav.querySelectorAll('button').forEach(x=>{ x.hidden=+x.dataset.step!==step; x.classList.toggle('active',x.dataset.tab===id); });
+  const actif=nav.querySelector('button.active');
+  if(actif && nav.scrollWidth>nav.clientWidth) nav.scrollLeft=Math.max(0,actif.offsetLeft-nav.clientWidth/2+actif.offsetWidth/2); // mobile : onglet actif visible
   document.querySelectorAll('.tab-page').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
   if(!noScroll) window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -1536,6 +1569,79 @@ function lierObjectifImmo(){
   alert("✅ Objectif « Achat immobilier » enregistré dans l'onglet 🎯 Objectifs de vie.");
 }
 
+/* =================== SUIVI RÉEL VS PRÉVU =================== */
+// [clé, libellé, type] : pour une « dépense », moins c'est mieux ; pour un revenu ou de l'épargne, plus c'est mieux
+const SUIVI_CATS=[['revenu','💰 Revenu net reçu','plus'],['fixes','🏠 Frais fixes','moins'],['variables','🛒 Frais variables','moins'],
+  ['assurances','🛡️ Assurances','moins'],['impots','🧾 Impôts','moins'],['cash','🐷 Épargne cash','plus'],['troisA','🌳 3ᵉ pilier','plus']];
+const SUIVI_DEP=['fixes','variables','assurances','impots'];
+const moisCle=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+const moisLabel=k=>{ const [y,m]=k.split('-'); const t=new Date(+y,+m-1,1).toLocaleDateString('fr-CH',{month:'long',year:'numeric'}); return t.charAt(0).toUpperCase()+t.slice(1); };
+let suiviMois=moisCle(new Date());
+function prevuActuel(C){ return {revenu:Math.round(C.salaireVerse),fixes:Math.round(C.totFixes),variables:Math.round(C.totVar),
+  assurances:Math.round(C.totAss),impots:Math.round(C.impotsMois),cash:Math.round(C.totCash),troisA:Math.round(C.epargne3aMois)}; }
+function renderSuiviMois(){
+  const sel=document.getElementById('suivi_mois'), now=new Date();
+  const keys=new Set(Object.keys(state.suivi)); keys.add(suiviMois);
+  for(let i=0;i<24;i++) keys.add(moisCle(new Date(now.getFullYear(),now.getMonth()-i,1)));
+  sel.innerHTML=[...keys].sort().reverse().map(k=>`<option value="${k}" ${k===suiviMois?'selected':''}>${moisLabel(k)}${state.suivi[k]?' ●':''}</option>`).join('');
+  const rec=state.suivi[suiviMois];
+  document.getElementById('suivi_rows').innerHTML=SUIVI_CATS.map(([k,l])=>{
+    const v=rec&&rec.reel[k]!=null?String(rec.reel[k]):'';
+    return `<tr><td>${l}</td><td class="num" id="suivi_p_${k}"></td><td class="num"><input type="number" class="suivi-in" value="${esc(v)}" placeholder="—" oninput="setSuivi('${k}',this.value)"></td><td class="num hide-m" id="suivi_e_${k}"></td><td class="num" id="suivi_x_${k}"></td></tr>`;
+  }).join('');
+}
+function choisirMoisSuivi(k){ suiviMois=k; renderSuiviMois(); calc(); }
+function setSuivi(k,v){
+  if(!state.suivi[suiviMois]) state.suivi[suiviMois]={prevu:prevuActuel(CTX),reel:{}};
+  state.suivi[suiviMois].reel[k]=v; calc();
+}
+function majPrevuSuivi(){
+  if(!state.suivi[suiviMois]) state.suivi[suiviMois]={prevu:{},reel:{}};
+  state.suivi[suiviMois].prevu=prevuActuel(CTX); renderSuiviMois(); calc();
+}
+function delSuivi(k){ if(!confirm(`Supprimer le suivi de ${moisLabel(k)} ?`)) return; delete state.suivi[k]; renderSuiviMois(); calc(); }
+// Écart d'une catégorie → [texte écart, pastille %]
+function ecartSuivi(type,prevu,reel){
+  const d=reel-prevu, p=prevu? d/prevu*100 : (d?100:0);
+  const bon = type==='moins' ? d<=0 : d>=0;
+  const cls = bon ? 'green' : Math.abs(p)<=10 ? 'orange' : 'red';
+  return [`${d>0?'+':d<0?'−':''}${CHF(Math.abs(d)).replace('CHF ','CHF ')}`, `<span class="pill ${cls}">${d>0?'+':''}${pct(p)}</span>`];
+}
+// Totaux d'un mois (seulement les catégories renseignées)
+function statsMois(rec){
+  const has=k=>rec.reel[k]!==undefined && rec.reel[k]!=='';
+  const depK=SUIVI_DEP.filter(has);
+  const depR=depK.reduce((s,k)=>s+num(rec.reel[k]),0), depP=depK.reduce((s,k)=>s+num(rec.prevu[k]),0);
+  const complet=has('revenu') && depK.length===SUIVI_DEP.length;
+  const revenu=has('revenu')?num(rec.reel.revenu):null;
+  const epargne=complet ? revenu-depR : null;
+  return {depK,depR,depP,revenu,epargne,taux: epargne!=null&&revenu>0 ? epargne/revenu*100 : null, n:SUIVI_CATS.filter(c=>has(c[0])).length};
+}
+function renderSuiviOut(C){
+  const rec=state.suivi[suiviMois], prevu=rec?rec.prevu:prevuActuel(C);
+  SUIVI_CATS.forEach(([k,,type])=>{
+    setText('suivi_p_'+k, CHF(num(prevu[k])));
+    const r=rec&&rec.reel[k]!==undefined&&rec.reel[k]!=='' ? num(rec.reel[k]) : null;
+    const [e,x] = r==null ? ['–',''] : ecartSuivi(type,num(prevu[k]),r);
+    setText('suivi_e_'+k,e); document.getElementById('suivi_x_'+k).innerHTML=x;
+  });
+  let res='';
+  if(!rec) res=`<div class="info">Aucune saisie pour ${moisLabel(suiviMois)}. Commencez par une catégorie : le « prévu » de ce mois sera mémorisé.</div>`;
+  else {
+    const S=statsMois(rec);
+    if(S.depK.length) { const [e,x]=ecartSuivi('moins',S.depP,S.depR);
+      res+=`<p style="margin:4px 0">Dépenses réelles (${S.depK.length}/${SUIVI_DEP.length} catégories) : <b>${CHF(S.depR)}</b> pour ${CHF(S.depP)} prévus · écart ${e} ${x}</p>`; }
+    if(S.epargne!=null) res+=`<p style="margin:4px 0">Épargne réelle (revenu − dépenses) : <b>${CHF(S.epargne)}</b>, soit un taux d'épargne de <b>${pct(S.taux)}</b>.</p>`;
+    else res+=`<p class="small muted" style="margin:4px 0">Renseignez le revenu et les 4 catégories de dépenses pour obtenir l'épargne réelle du mois.</p>`;
+  }
+  document.getElementById('suivi_resume').innerHTML=res;
+  const mois=Object.keys(state.suivi).sort().reverse();
+  document.getElementById('suivi_hist').innerHTML = mois.length ? mois.map(k=>{
+    const S=statsMois(state.suivi[k]); const [e,x]=S.depK.length?ecartSuivi('moins',S.depP,S.depR):['–',''];
+    return `<tr class="${k===suiviMois?'hl':''}"><td><a href="#" onclick="choisirMoisSuivi('${k}');return false">${moisLabel(k)}</a></td><td class="num">${S.depK.length?CHF(S.depP):'–'}</td><td class="num">${S.depK.length?CHF(S.depR):'–'}</td><td class="num">${e} ${x}</td><td class="num">${S.epargne!=null?CHF(S.epargne):'–'}</td><td class="num">${S.taux!=null?pct(S.taux):'–'}</td><td><button class="del" onclick="delSuivi('${k}')" title="Supprimer ce mois">✕</button></td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="muted">Aucun mois suivi pour l'instant.</td></tr>`;
+}
+
 /* =================== COMPTES & FORTUNE =================== */
 function renderComptes(){
   const list=document.getElementById('list_comptes'); list.innerHTML='';
@@ -1616,7 +1722,7 @@ function push(){ // écrire state dans les champs
   setV('s_capital',state.strategie.capital); setV('s_mensuel',state.strategie.mensuel);
   for(const g in FIELDS) FIELDS[g].forEach(f=>setV(g+'_'+f,state[g][f]));
   renderQuestions();
-  renderItems('fixes'); renderItems('variables'); renderInsurances(); renderItems('epargne'); renderPilier(); renderComptes(); renderObjectifs();
+  renderItems('fixes'); renderItems('variables'); renderInsurances(); renderItems('epargne'); renderPilier(); renderComptes(); renderObjectifs(); renderSuiviMois();
 }
 function setV(id,v){const e=document.getElementById(id); if(e!=null)e.value=(v==null?"":v);}
 function exportData(){
@@ -1793,6 +1899,7 @@ function calc(){
   renderObjectifsOut(ctx);
   ctx.immo=computeImmo(ctx);
   renderImmo(ctx);
+  renderSuiviOut(ctx);
   CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();
@@ -2296,6 +2403,11 @@ function exampleState(){
     {nom:"Voyage au Japon",cible:"6000",date:dans(10),deja:"1500"},
     {nom:"Nouvelle voiture",cible:"15000",date:dans(32),deja:"2000"}
   ];
+  const prevuEx={revenu:5394,fixes:1983,variables:1300,assurances:535,impots:694,cash:250,troisA:605};
+  s.suivi={
+    [dans(-2)]:{prevu:{...prevuEx},reel:{revenu:"5394",fixes:"1983",variables:"1420",assurances:"535",impots:"694",cash:"250",troisA:"605"}},
+    [dans(-1)]:{prevu:{...prevuEx},reel:{revenu:"5394",fixes:"2010",variables:"1580",assurances:"535",impots:"694",cash:"250",troisA:"605"}}
+  };
   s.immo={prix:"650000",revenu:"",date:dans(48),cash:"",troisA:"",lpp:""};
   s.retraite={age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""};
   s.profil={age:"30-44",objectif:"croissance",horizon:"4",besoin:"peu",revenus:"stable",connaissances:"bases",

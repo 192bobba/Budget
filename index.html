@@ -73,6 +73,9 @@
   .prog>div{height:100%;background:var(--vert);border-radius:6px;transition:width .3s}
   .suivi-in{width:110px;min-width:90px;margin-left:auto;padding:6px 8px}
   @media(max-width:720px){.hide-m{display:none}.suivi-in{width:80px;min-width:70px}}
+  .chart-wrap{position:relative} .chart-wrap svg{width:100%;height:auto;display:block;touch-action:pan-y}
+  .chart-wrap .ax{fill:var(--muted);font-size:11px} .chart-wrap .grid-l{stroke:var(--bord);stroke-width:1}
+  .chart-tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--bord);box-shadow:var(--ombre);border-radius:8px;padding:6px 9px;font-size:12.5px;white-space:nowrap;transform:translate(-50%,calc(-100% - 10px));display:none;z-index:2}
   .row-hint{grid-column:1/-1;font-size:12.5px;background:var(--orange-bg);color:#92520a;border-radius:8px;padding:7px 10px}
   .row-hint:empty{display:none}
   .row-hint button{padding:3px 9px;font-size:12px;margin-left:6px;background:#fff;border:1px solid #f5d9a8;color:#92520a}
@@ -630,6 +633,18 @@
         <div class="stat blue"><div class="lbl">Fortune nette</div><div class="val" id="f_nette">–</div></div>
       </div>
     </div>
+    <div class="card">
+      <h2>📈 Évolution de votre fortune nette</h2>
+      <p class="sub">Une fois par mois (par exemple le jour de paie), enregistrez votre fortune nette du jour pour suivre son évolution.</p>
+      <button class="btn-primary btn-sm" onclick="enregistrerInstantane()">📸 Enregistrer l'instantané du mois</button>
+      <div class="chart-wrap" id="h_chart" style="margin-top:16px"></div>
+      <div id="h_resume"></div>
+      <div class="tbl-wrap" style="margin-top:10px"><table>
+        <thead><tr><th>Mois</th><th class="num">Actifs</th><th class="num">Dettes</th><th class="num">Fortune nette</th><th class="num">Variation</th><th></th></tr></thead>
+        <tbody id="h_table"></tbody>
+      </table></div>
+    </div>
+    <div class="edu">ℹ️ <b>Suivi simplifié.</b> La fortune nette reprend vos comptes, placements et 3ᵉ pilier, moins vos dettes, au moment de l'instantané (sans la caisse de pension).</div>
   </section>
 
   <!-- ============ IMPOTS ============ -->
@@ -983,6 +998,7 @@ function blankState(){
     fixes:[], variables:[], assurances:[], epargne:[], pilier:[], comptes:[],
     objectifs:[],                       // [{nom, cible, date:'AAAA-MM', deja}]
     suivi:{},                           // { 'AAAA-MM': {prevu:{catégorie:montant}, reel:{catégorie:montant}} }
+    historique:[],                      // [{mois:'AAAA-MM', date, actifs, dettes, nette}]
     pilierCfg:{type:"caisse",plafond:String(LEGAL.pilier3a.avecCaisse),versement:"",pay:"direct"},
     impots:{statut:"single",canton:"VD",enfants:"0",revenu:"",deductions:"0",tauxCanton:"",pay:"souscompte",marginal:""},
     budgetModel:"503020",
@@ -1010,7 +1026,8 @@ function normalizeState(s){
   s.profil = (s.profil && typeof s.profil==='object') ? Object.assign({},s.profil) : {};
   s.suivi = (s.suivi && typeof s.suivi==='object' && !Array.isArray(s.suivi)) ? s.suivi : {};
   for(const k in s.suivi){ const r=s.suivi[k]; if(!r||typeof r!=='object'){ delete s.suivi[k]; continue; } r.prevu=r.prevu||{}; r.reel=r.reel||{}; }
-  ['fixes','variables','assurances','epargne','pilier','comptes','objectifs'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ['fixes','variables','assurances','epargne','pilier','comptes','objectifs','historique'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  s.historique=s.historique.filter(h=>h&&/^\d{4}-\d{2}$/.test(h.mois)).sort((a,b)=>a.mois.localeCompare(b.mois));
   // Anciennes données sans mode de paiement : mensuel → prélevé directement, sinon → sous-compte
   const mensuel = it => FREQ[it.freq||'mensuel']>=12;
   s.fixes.forEach(it=>{ if(!PAY[it.pay]) it.pay = mensuel(it)?'direct':'souscompte'; });
@@ -1642,6 +1659,74 @@ function renderSuiviOut(C){
   }).join('') : `<tr><td colspan="7" class="muted">Aucun mois suivi pour l'instant.</td></tr>`;
 }
 
+/* =================== HISTORIQUE DE LA FORTUNE =================== */
+function enregistrerInstantane(){
+  const C=CTX, k=moisCle(new Date());
+  const ex=state.historique.find(h=>h.mois===k);
+  if(ex && !confirm(`Un instantané existe déjà pour ${moisLabel(k)} (${CHF(ex.nette)}). Le remplacer par la fortune d'aujourd'hui ?`)) return;
+  const snap={mois:k,date:new Date().toISOString().slice(0,10),actifs:Math.round(C.actifs),dettes:Math.round(C.dettesTotal),nette:Math.round(C.actifs-C.dettesTotal)};
+  if(ex) Object.assign(ex,snap); else state.historique.push(snap);
+  state.historique.sort((a,b)=>a.mois.localeCompare(b.mois));
+  calc();
+}
+function delInstantane(k){
+  if(!confirm(`Supprimer l'instantané de ${moisLabel(k)} ?`)) return;
+  state.historique=state.historique.filter(h=>h.mois!==k); calc();
+}
+// Graduations « rondes » pour un axe
+function niceTicks(min,max,n=4){
+  if(min===max){ const d=Math.abs(min)*0.1||1000; min-=d; max+=d; }
+  const raw=(max-min)/n, mag=Math.pow(10,Math.floor(Math.log10(raw))), step=[1,2,2.5,5,10].map(x=>x*mag).find(x=>x>=raw);
+  const lo=Math.floor(min/step)*step, hi=Math.ceil(max/step)*step, t=[];
+  for(let v=lo; v<=hi+step/2; v+=step) t.push(v);
+  return t;
+}
+const chfCourt=v=>{ const a=Math.abs(v); return (v<0?'−':'')+(a>=1e6?(a/1e6).toLocaleString('fr-CH',{maximumFractionDigits:1})+' M':a>=1e3?Math.round(a/1e3)+'k':Math.round(a)); };
+// Courbe SVG simple (une série) avec infobulle au survol / au toucher
+function lineChart(el,points,couleur){
+  if(!points.length){ el.innerHTML=''; return; }
+  const W=760,H=240,ml=56,mr=16,mt=14,mb=30, vals=points.map(p=>p.v);
+  const ticks=niceTicks(Math.min(...vals),Math.max(...vals));
+  const y0=ticks[0], y1=ticks[ticks.length-1];
+  const X=i=> points.length===1 ? (ml+W-mr)/2 : ml+(W-ml-mr)*i/(points.length-1);
+  const Y=v=> mt+(H-mt-mb)*(1-(v-y0)/((y1-y0)||1));
+  const pas=Math.ceil(points.length/8); // au plus ~8 étiquettes de mois
+  let g=ticks.map(t=>`<line class="grid-l" x1="${ml}" x2="${W-mr}" y1="${Y(t)}" y2="${Y(t)}"/><text class="ax" x="${ml-8}" y="${Y(t)+4}" text-anchor="end">${chfCourt(t)}</text>`).join('');
+  g+=points.map((p,i)=> (i%pas===0||i===points.length-1) ? `<text class="ax" x="${X(i)}" y="${H-8}" text-anchor="middle">${p.x}</text>` : '').join('');
+  const d=points.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ');
+  g+=`<path d="${d}" fill="none" stroke="${couleur}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  g+=points.map((p,i)=>`<circle cx="${X(i)}" cy="${Y(p.v)}" r="4.5" fill="${couleur}" stroke="#fff" stroke-width="2"/>`).join('');
+  g+=`<line id="cx_line" x1="0" x2="0" y1="${mt}" y2="${H-mb}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution de la fortune nette">${g}<rect x="${ml}" y="${mt}" width="${W-ml-mr}" height="${H-mt-mb}" fill="transparent"/></svg><div class="chart-tip"></div>`;
+  const svg=el.querySelector('svg'), tip=el.querySelector('.chart-tip'), cx=svg.querySelector('#cx_line');
+  const show=e=>{
+    const r=svg.getBoundingClientRect(), x=(e.clientX-r.left)/r.width*W;
+    let i=0, best=Infinity; points.forEach((p,j)=>{ const dd=Math.abs(X(j)-x); if(dd<best){best=dd;i=j;} });
+    cx.setAttribute('x1',X(i)); cx.setAttribute('x2',X(i)); cx.setAttribute('visibility','visible');
+    tip.innerHTML=`<b>${points[i].label}</b><br>${CHF(points[i].v)}${points[i].sub?`<br><span class="muted">${points[i].sub}</span>`:''}`;
+    tip.style.left=(X(i)/W*r.width)+'px'; tip.style.top=(Y(points[i].v)/H*r.height)+'px'; tip.style.display='block';
+  };
+  svg.addEventListener('pointermove',show); svg.addEventListener('pointerdown',show);
+  svg.addEventListener('pointerleave',()=>{ tip.style.display='none'; cx.setAttribute('visibility','hidden'); });
+}
+function renderHistorique(C){
+  const H=state.historique;
+  const pts=H.map((h,i)=>{ const [y,m]=h.mois.split('-'); const v=i?h.nette-H[i-1].nette:null;
+    return {x:`${m}.${y.slice(2)}`, v:num(h.nette), label:moisLabel(h.mois), sub: v==null?'':`${v>=0?'+':'−'}${CHF(Math.abs(v))} sur le mois précédent`}; });
+  lineChart(document.getElementById('h_chart'),pts,'#2563eb');
+  let r='';
+  if(!H.length) r=`<div class="info">Aucun instantané pour l'instant. Cliquez sur le bouton ci-dessus : la fortune nette d'aujourd'hui (${CHF(C.actifs-C.dettesTotal)}) sera enregistrée pour ${moisLabel(moisCle(new Date()))}.</div>`;
+  else if(H.length===1) r=`<p class="small muted">Un seul instantané : enregistrez-en un chaque mois pour voir la courbe.</p>`;
+  else { const a=H[0], z=H[H.length-1], d=z.nette-a.nette;
+    r=`<p style="margin:8px 0 0">De ${moisLabel(a.mois)} à ${moisLabel(z.mois)} : <b>${d>=0?'+':'−'}${CHF(Math.abs(d))}</b>${a.nette>0?` (${d>=0?'+':''}${pct(d/a.nette*100)})`:''}.</p>`; }
+  if(H.length && H[H.length-1].mois!==moisCle(new Date())) r+=`<p class="small muted">Pas encore d'instantané pour ${moisLabel(moisCle(new Date()))}.</p>`;
+  document.getElementById('h_resume').innerHTML=r;
+  document.getElementById('h_table').innerHTML = H.length ? [...H].reverse().map((h,ri)=>{
+    const i=H.length-1-ri, v=i?h.nette-H[i-1].nette:null;
+    return `<tr><td>${moisLabel(h.mois)}</td><td class="num">${CHF(h.actifs)}</td><td class="num">${CHF(h.dettes)}</td><td class="num"><b>${CHF(h.nette)}</b></td><td class="num">${v==null?'–':`<span class="pill ${v>=0?'green':'red'}">${v>=0?'+':'−'}${CHF(Math.abs(v))}</span>`}</td><td><button class="del" onclick="delInstantane('${h.mois}')" title="Supprimer">✕</button></td></tr>`;
+  }).join('') : `<tr><td colspan="6" class="muted">Aucun instantané.</td></tr>`;
+}
+
 /* =================== COMPTES & FORTUNE =================== */
 function renderComptes(){
   const list=document.getElementById('list_comptes'); list.innerHTML='';
@@ -1900,6 +1985,7 @@ function calc(){
   ctx.immo=computeImmo(ctx);
   renderImmo(ctx);
   renderSuiviOut(ctx);
+  renderHistorique(ctx);
   CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();
@@ -2408,6 +2494,8 @@ function exampleState(){
     [dans(-2)]:{prevu:{...prevuEx},reel:{revenu:"5394",fixes:"1983",variables:"1420",assurances:"535",impots:"694",cash:"250",troisA:"605"}},
     [dans(-1)]:{prevu:{...prevuEx},reel:{revenu:"5394",fixes:"2010",variables:"1580",assurances:"535",impots:"694",cash:"250",troisA:"605"}}
   };
+  s.historique=[[-6,27800,7250],[-5,28900,7000],[-4,30100,6750],[-3,29600,6500],[-2,31400,6250],[-1,32500,6000]].map(([m,n,d])=>
+    ({mois:dans(m),date:dans(m)+'-25',actifs:n+d,dettes:d,nette:n}));
   s.immo={prix:"650000",revenu:"",date:dans(48),cash:"",troisA:"",lpp:""};
   s.retraite={age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""};
   s.profil={age:"30-44",objectif:"croissance",horizon:"4",besoin:"peu",revenus:"stable",connaissances:"bases",

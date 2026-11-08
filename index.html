@@ -127,7 +127,7 @@
   .reasons li{padding:4px 0}
   .prio{display:flex;gap:12px;padding:13px 0;border-top:1px solid var(--bord)}
   .prio:first-child{border-top:none;padding-top:2px}
-  .prio .ico{flex:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px}
+  .prio .ico{flex:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;overflow:hidden}
   .prio .ico.ok{background:var(--vert-bg)} .prio .ico.todo{background:var(--orange-bg)} .prio .ico.ko{background:var(--rouge-bg)} .prio .ico.info{background:var(--bleu-bg)}
   .prio h3{font-size:15px;margin:3px 0 2px}
   .prio p{margin:0;font-size:13.5px;color:var(--muted)}
@@ -668,6 +668,29 @@
     <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> Calculs avec un taux fixe et des mensualités constantes. Pour un leasing, la valeur résiduelle n'est pas prise en compte, et un remboursement anticipé est souvent soumis à des frais : vérifiez votre contrat.</div>
   </section>
 
+  <!-- ============ BILAN ANNUEL ============ -->
+  <section class="tab-page" data-tab="bilan">
+    <div class="card">
+      <h2>📅 Bilan annuel <select id="bilan_annee" onchange="bilanAnnee=+this.value;calc()" style="width:auto;margin-left:8px"></select></h2>
+      <p class="sub">Votre année en un coup d'œil, à partir des instantanés de fortune, du suivi réel et de votre situation actuelle.</p>
+      <div class="grid g4">
+        <div class="stat" id="bilan_fortuneCard"><div class="lbl">Fortune nette</div><div class="val" id="bilan_fortune">–</div><div class="small muted" id="bilan_fortuneSub"></div></div>
+        <div class="stat"><div class="lbl">Taux d'épargne réel</div><div class="val" id="bilan_taux">–</div><div class="small muted" id="bilan_tauxSub"></div></div>
+        <div class="stat"><div class="lbl">3ᵉ pilier versé / plafond</div><div class="val" id="bilan_3a">–</div><div class="small muted" id="bilan_3aSub"></div></div>
+        <div class="stat"><div class="lbl">Rachat LPP possible</div><div class="val" id="bilan_lpp">–</div><div class="small muted" id="bilan_lppSub"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🔔 Points d'attention</h2>
+      <div id="bilan_points"></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h2>🎯 Objectifs</h2><div id="bilan_obj"></div></div>
+      <div class="card"><h2>🏖️ Retraite & budget</h2><div id="bilan_ret"></div></div>
+    </div>
+    <div class="edu">ℹ️ <b>Bilan simplifié, à but éducatif</b>, généré automatiquement à partir de vos saisies. Les points d'attention sont des repères, pas des conseils personnalisés.</div>
+  </section>
+
   <!-- ============ COMPTES & FORTUNE ============ -->
   <section class="tab-page" data-tab="fortune">
     <div class="card">
@@ -1108,7 +1131,7 @@ const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["vari
   ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],["dettes","💳 Dettes & leasings",2],
   ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],["retraite","🏖️ Retraite",3],["couverture","🩺 Décès & invalidité",3],
   ["objectifs","🎯 Objectifs de vie",4],["immo","🏡 Achat immobilier",4],
-  ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6]];
+  ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6],["bilan","📅 Bilan annuel",6]];
 const lastTab = {}; // dernier onglet ouvert dans chaque étape
 function buildTabs(){
   const stepsNav=document.getElementById('steps');
@@ -1931,6 +1954,93 @@ function renderDettesOut(C){
     : `<p class="muted">Aucune dette renseignée.</p>`;
 }
 
+/* =================== BILAN ANNUEL =================== */
+let bilanAnnee=new Date().getFullYear();
+function renderBilan(C){
+  const an=String(bilanAnnee), cetteAnnee=bilanAnnee===new Date().getFullYear();
+  // Années disponibles
+  const annees=new Set([new Date().getFullYear()]);
+  state.historique.forEach(h=>annees.add(+h.mois.slice(0,4))); Object.keys(state.suivi).forEach(k=>annees.add(+k.slice(0,4)));
+  document.getElementById('bilan_annee').innerHTML=[...annees].sort((a,b)=>b-a).map(y=>`<option value="${y}" ${y===bilanAnnee?'selected':''}>${y}</option>`).join('');
+  // Fortune nette sur l'année
+  const H=state.historique.filter(h=>h.mois.startsWith(an));
+  const fin = cetteAnnee ? C.actifs-C.dettesTotal : (H.length?H[H.length-1].nette:null);
+  const debut = H.length ? H[0].nette : null;
+  setText('bilan_fortune', fin!=null?CHF(fin):'–');
+  let fs=''; let varF=null;
+  if(debut!=null && fin!=null){ varF=fin-debut; fs=`${varF>=0?'+':'−'}${CHF(Math.abs(varF))} depuis ${moisLabel(H[0].mois).toLowerCase()}`; }
+  else fs = cetteAnnee ? "Aucun instantané cette année" : "Pas d'instantané";
+  setText('bilan_fortuneSub',fs);
+  document.getElementById('bilan_fortuneCard').className='stat'+(varF==null?'':varF>=0?' green':' red');
+  // Taux d'épargne réel (mois complets du suivi)
+  const mois=Object.keys(state.suivi).filter(k=>k.startsWith(an)).map(k=>({k,S:statsMois(state.suivi[k])}));
+  const complets=mois.filter(m=>m.S.epargne!=null);
+  const rev=complets.reduce((s,m)=>s+m.S.revenu,0), ep=complets.reduce((s,m)=>s+m.S.epargne,0);
+  // Prévu calculé comme le réel : (salaire du mois − dépenses) / salaire, pour un mois normal (sans 13e ni prime)
+  const tauxPrevu = C.salaireVerse>0 ? (C.salaireVerse-C.depensesMois)/C.salaireVerse*100 : null;
+  if(complets.length && rev>0){ setText('bilan_taux',pct(ep/rev*100)); setText('bilan_tauxSub',`${complets.length} mois suivis · prévu pour un mois normal : ${tauxPrevu!=null?pct(tauxPrevu):'–'}`); }
+  else { setText('bilan_taux',tauxPrevu!=null?pct(tauxPrevu):'–'); setText('bilan_tauxSub','Prévu pour un mois normal (aucun mois complet dans le suivi)'); }
+  // 3a et LPP (situation actuelle)
+  setText('bilan_3a', C.plafond3a>0?pct(Math.min(100,C.versement3a/C.plafond3a*100)):'–');
+  setText('bilan_3aSub', `${CHF(C.versement3a)} sur ${CHF(C.plafond3a)}${cetteAnnee?'':' (situation actuelle)'}`);
+  const rm=C.lpp.rachatMax, ecoLpp=rm>0?3*C.lpp.ecoRachat(rm/3):0;
+  setText('bilan_lpp', rm>0?CHF(rm):'–');
+  setText('bilan_lppSub', rm>0?`≈ ${CHF(ecoLpp)} d'impôts en moins si racheté sur 3 ans`:'Potentiel non renseigné (onglet 🏛️ 2ᵉ pilier)');
+  // Points d'attention
+  const P=[]; const pt=(st,txt,tab)=>P.push({st,txt,tab});
+  if(C.netMois<=0) pt('ko',"Revenus non renseignés : le bilan ne peut pas être calculé correctement.",'revenus');
+  else if(C.reste<0) pt('ko',`Budget déficitaire de ${CHF(-C.reste)} par mois.`,'budget');
+  const manque3a=Math.max(0,C.plafond3a-C.versement3a);
+  if(manque3a>1) pt('todo',`3ᵉ pilier pas au plafond : encore ${CHF(manque3a)} possibles${cetteAnnee?' avant le 31 décembre':''} (≈ ${CHF(C.ecoDeduction(manque3a))} d'impôts en moins).`,'pilier');
+  else if(C.plafond3a>0) pt('ok',"3ᵉ pilier versé au plafond.",'pilier');
+  const moisRes=C.inv.moisRes, couverts=C.depensesMois>0?C.soldeEpargne/C.depensesMois:0;
+  if(C.depensesMois>0 && couverts<moisRes) pt('todo',`Réserve d'urgence de ${couverts.toLocaleString('fr-CH',{maximumFractionDigits:1})} mois de dépenses, pour un objectif de ${moisRes} mois.`,'epargne');
+  else if(C.depensesMois>0) pt('ok',`Réserve d'urgence : ${couverts.toLocaleString('fr-CH',{maximumFractionDigits:1})} mois de dépenses.`,'epargne');
+  const ret=C.inv.S.ret;
+  state.dettes.forEach(d=>{ const a=analyseDette(d); if(!a.B) return;
+    if(a.infini) pt('ko',`${esc(d.nom||'Dette')} : la mensualité ne couvre pas les intérêts.`,'dettes');
+    else if(d.type!=='hypotheque' && a.tauxConnu && a.taux>=Math.max(5,ret)) pt('todo',`Dette à taux élevé : ${esc(d.nom||'dette')} (${pct(a.taux)}, ${CHF(a.B)} restants).`,'dettes'); });
+  if(!state.dettes.some(d=>num(d.restant)>0)) pt('ok',"Aucune dette en cours.",'dettes');
+  const depasses=mois.filter(m=>m.S.depK.length && m.S.depR>m.S.depP*1.1);
+  if(!mois.length) pt('info',`Aucun mois suivi en ${an} : notez vos dépenses réelles chaque mois pour mesurer votre épargne réelle.`,'suivi');
+  else if(depasses.length) pt('todo',`${depasses.length} mois avec des dépenses plus de 10 % au-dessus du budget (${depasses.map(m=>moisLabel(m.k).split(' ')[0].toLowerCase()).join(', ')}).`,'suivi');
+  if(cetteAnnee && !state.historique.some(h=>h.mois===moisCle(new Date()))) pt('info',"Pas encore d'instantané de fortune ce mois-ci.",'fortune');
+  if(varF!=null && varF<0) pt('todo',`Fortune nette en baisse de ${CHF(-varF)} sur l'année.`,'fortune');
+  const R=C.retraite;
+  if(C.age==null) pt('info',"Année de naissance non renseignée : la projection retraite est incomplète.",'revenus');
+  else if(R.revenu>0 && R.gap>0) pt('todo',`Écart retraite : il manquerait ${CHF(R.gap)}/mois (${pct(R.gap/R.revenu*100)} du revenu actuel).`,'retraite');
+  else if(R.revenu>0) pt('ok',`Retraite : ${pct(R.taux)} du revenu actuel couvert.`,'retraite');
+  const nonAtt=C.objectifs.res.filter(r=>r.mensuel>0 && !r.atteignable);
+  if(nonAtt.length) pt('todo',`${nonAtt.length} objectif${nonAtt.length>1?'s':''} pas atteignable${nonAtt.length>1?'s':''} avec la marge actuelle (${nonAtt.map(r=>esc(r.nom)).join(', ')}).`,'objectifs');
+  if(rm>0 && ecoLpp/rm>=0.2) pt('info',`Rachat LPP possible (${CHF(rm)}) avec une économie d'impôt d'environ ${pct(ecoLpp/rm*100)} du montant.`,'lpp');
+  if(!C.lpp.saisi) pt('info',"Certificat de caisse de pension non renseigné (avoir, rente, prestations).",'lpp');
+  const K=C.couverture;
+  if(K.besoins>0 && K.totInv<K.besoins*0.9) pt('todo',`En cas d'invalidité, lacune estimée de ${CHF(K.besoins-K.totInv)}/mois.`,'couverture');
+  if(!C.prof.complete) pt('info',"Profil investisseur incomplet : la stratégie utilise un profil équilibré par défaut.",'profil');
+  if(C.immo.P>0 && !C.immo.faisable) pt('info',`Achat immobilier à ${CHF(C.immo.P)} pas encore finançable (prix maximal estimé : ${CHF(C.immo.prixMax)}).`,'immo');
+  const m=new Date().getMonth()+1;
+  if(cetteAnnee && (m===10||m===11)) pt('info',"Assurance maladie : la résiliation pour le 1er janvier doit parvenir à la caisse avant le 30 novembre.",'assurances');
+  const ordre={ko:0,todo:1,info:2,ok:3}, ICO={ok:'✅',todo:'🔶',ko:'⛔',info:'ℹ️'};
+  P.sort((a,b)=>ordre[a.st]-ordre[b.st]);
+  const lbl=id=>(TABS.find(t=>t[0]===id)||['',''])[1];
+  document.getElementById('bilan_points').innerHTML=P.map(x=>`<div class="prio"><div class="ico ${x.st}">${ICO[x.st]}</div><div><p style="color:var(--txt);margin-top:6px">${x.txt} <a href="#" onclick="goTab('${x.tab}');return false" class="small">→ ${lbl(x.tab)}</a></p></div></div>`).join('');
+  // Objectifs
+  const O=C.objectifs.res.filter(r=>r.cible>0);
+  document.getElementById('bilan_obj').innerHTML = O.length ? O.map(r=>`<div style="margin-bottom:10px"><div class="small"><b>${esc(r.nom)}</b> · ${Math.round(r.progres)} % (${CHF(r.deja)} / ${CHF(r.cible)})${r.atteint?' ✅':''}</div><div class="prog"><div style="width:${r.progres}%"></div></div></div>`).join('')
+    : `<p class="muted">Aucun objectif. <a href="#" onclick="goTab('objectifs');return false">Ajouter un objectif →</a></p>`;
+  // Retraite & budget
+  const budgetLignes=[];
+  if(mois.length){ const dp=mois.reduce((s,m)=>s+m.S.depP,0), dr=mois.reduce((s,m)=>s+m.S.depR,0);
+    budgetLignes.push(`<tr><td>Dépenses suivies (${mois.length} mois)</td><td class="num">${CHF(dr)} <span class="small muted">/ ${CHF(dp)} prévus</span></td></tr>`); }
+  document.getElementById('bilan_ret').innerHTML=`<div class="tbl-wrap"><table><tbody>
+    <tr><td>Revenu à la retraite estimé${C.age!=null?` (à ${R.ageR} ans)`:''}</td><td class="num">${CHF(R.total)}/mois</td></tr>
+    <tr><td>Revenu net actuel</td><td class="num">${CHF(R.revenu)}/mois</td></tr>
+    <tr><td>Taux de remplacement</td><td class="num">${R.revenu>0?pct(R.taux):'–'}</td></tr>
+    ${budgetLignes.join('')}
+    <tr><td>Épargne prévue (cash + 3a)</td><td class="num">${CHF((C.totCash+C.epargne3aMois)*12)}/an</td></tr>
+  </tbody></table></div>`;
+}
+
 /* =================== COMPTES & FORTUNE =================== */
 function renderComptes(){
   const list=document.getElementById('list_comptes'); list.innerHTML='';
@@ -2193,6 +2303,7 @@ function calc(){
   renderSuiviOut(ctx);
   renderHistorique(ctx);
   renderDettesOut(ctx);
+  renderBilan(ctx);
   CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();

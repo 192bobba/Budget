@@ -544,6 +544,48 @@
     <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> L'épargne nécessaire est calculée sans intérêts ni inflation. La marge est le « reste à la fin du mois » de l'onglet ⚖️ Budget, attribuée aux objectifs dans l'ordre de leurs dates.</div>
   </section>
 
+  <!-- ============ ACHAT IMMOBILIER ============ -->
+  <section class="tab-page" data-tab="immo">
+    <div class="card">
+      <h2>🏡 Pouvez-vous acheter un logement ?</h2>
+      <p class="sub">Les banques suisses vérifient deux choses : vos <b>fonds propres</b> et la <b>tenue des charges</b> par rapport à votre revenu. Les champs vides reprennent vos données (comptes, 3a, caisse de pension, revenu).</p>
+      <div class="grid g3">
+        <div><label>Prix du bien (CHF)</label><input type="number" id="immo_prix" placeholder="750000" oninput="calc()"></div>
+        <div><label>Revenu brut annuel du ménage (CHF)</label><input type="number" id="immo_revenu" oninput="calc()"><div class="inline-help" id="immo_revenuHelp"></div></div>
+        <div><label>Date d'achat souhaitée</label><input type="month" id="immo_date" placeholder="AAAA-MM" oninput="calc()"><div class="inline-help">Pour l'objectif de vie lié</div></div>
+      </div>
+      <hr class="hr">
+      <h3 style="font-size:15px">Vos fonds propres</h3>
+      <div class="grid g3">
+        <div><label>Épargne et placements (CHF)</label><input type="number" id="immo_cash" oninput="calc()"><div class="inline-help" id="immo_cashHelp"></div></div>
+        <div><label>3ᵉ pilier (CHF)</label><input type="number" id="immo_troisA" oninput="calc()"><div class="inline-help" id="immo_troisAHelp"></div></div>
+        <div><label>Caisse de pension utilisée (CHF)</label><input type="number" id="immo_lpp" oninput="calc()"><div class="inline-help" id="immo_lppHelp"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Résultat</h2>
+      <div class="grid g4">
+        <div class="stat blue"><div class="lbl">Prix maximal finançable</div><div class="val" id="immo_oMax">–</div></div>
+        <div class="stat"><div class="lbl">Fonds propres disponibles</div><div class="val" id="immo_oFP">–</div></div>
+        <div class="stat"><div class="lbl">Charges théoriques / mois</div><div class="val" id="immo_oCharges">–</div></div>
+        <div class="stat" id="immo_oEffortCard"><div class="lbl">Part du revenu brut</div><div class="val" id="immo_oEffort">–</div></div>
+      </div>
+      <div class="tbl-wrap" style="margin-top:14px"><table>
+        <thead><tr><th>Règle</th><th class="num">Exigé</th><th class="num">Vous</th><th></th></tr></thead>
+        <tbody id="immo_regles"></tbody>
+      </table></div>
+      <div id="immo_verdict"></div>
+      <div id="immo_objectif" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>🧮 Comment sont calculées les charges</h2>
+      <div class="tbl-wrap"><table><tbody id="immo_detail"></tbody></table></div>
+    </div>
+    <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> Règles usuelles des banques suisses (taux théorique, amortissement, frais d'entretien), qui varient selon l'établissement. Utiliser sa caisse de pension (EPL) réduit ses rentes de retraite, d'invalidité et de décès, et le retrait est imposé ; après 50 ans, le montant utilisable est limité. Demandez une offre à plusieurs banques.</div>
+  </section>
+
   <!-- ============ COMPTES & FORTUNE ============ -->
   <section class="tab-page" data-tab="fortune">
     <div class="card">
@@ -920,7 +962,8 @@ function blankState(){
     perso:{naissance:""},
     lpp:{avoir:"",avoir65:"",tauxConv:"",rente65:"",rachatMax:"",tauxInteret:"",renteInvalidite:"",renteEnfantInvalide:"",
       renteConjoint:"",renteOrphelin:"",capitalDeces:"",rachatMontant:"",rachatAns:"1",retraitCapital:"non"},
-    retraite:{age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""}
+    retraite:{age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""},
+    immo:{prix:"",revenu:"",date:"",cash:"",troisA:"",lpp:""}
   };
 }
 // Champs simples des nouvelles sections : l'id HTML est « groupe_champ » (ex. perso_naissance).
@@ -928,7 +971,8 @@ function blankState(){
 const FIELDS={perso:['naissance'],
   lpp:['avoir','avoir65','tauxConv','rente65','rachatMax','tauxInteret','renteInvalidite','renteEnfantInvalide',
     'renteConjoint','renteOrphelin','capitalDeces','rachatMontant','rachatAns','retraitCapital'],
-  retraite:['age','dureeCapital','avsMode','ram','anneesManquantes','renteExtrait','renteConjoint']};
+  retraite:['age','dureeCapital','avsMode','ram','anneesManquantes','renteExtrait','renteConjoint'],
+  immo:['prix','revenu','date','cash','troisA','lpp']};
 // Complète un état chargé (ancienne sauvegarde, fichier importé) avec les champs ajoutés depuis.
 function normalizeState(s){
   const b=blankState();
@@ -955,7 +999,7 @@ const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["vari
   ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],
   ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],
   ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],["retraite","🏖️ Retraite",3],
-  ["objectifs","🎯 Objectifs de vie",4],
+  ["objectifs","🎯 Objectifs de vie",4],["immo","🏡 Achat immobilier",4],
   ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6]];
 const lastTab = {}; // dernier onglet ouvert dans chaque étape
 function buildTabs(){
@@ -1406,6 +1450,92 @@ function renderObjectifsOut(C){
   document.getElementById('obj_note').innerHTML=n;
 }
 
+/* =================== ACHAT IMMOBILIER =================== */
+function computeImmo(C){
+  const I=state.immo, R=LEGAL.immo;
+  const auto=(v,d)=>v!=='' ? num(v) : d;
+  const cash=auto(I.cash, C.soldeEpargne+C.placements), troisA=auto(I.troisA, C.totalPilier), lpp=auto(I.lpp, C.lpp.avoir);
+  const revenu=auto(I.revenu, C.brutAnnuel+num(state.revenus.autres)*12);
+  const fp=cash+troisA+lpp, fpDur=cash+troisA;        // fonds propres « durs » = hors caisse de pension
+  const f=R.fraisAchat/100;
+  // Amortissement jusqu'à 2/3 du prix en 15 ans, au plus tard à la retraite
+  const ansAmort = C.age!=null ? Math.max(1,Math.min(R.amortissementAns, ageRetraite()-C.age)) : R.amortissementAns;
+  const charges = P => { // charges théoriques annuelles pour un prix P (tous les fonds propres utilisés)
+    const hyp=Math.max(0, P-Math.max(0,fp-f*P));
+    const amort=Math.max(0, hyp-P*R.hypothequeCible/100)/ansAmort;
+    return {hyp, interets:hyp*R.tauxTheorique/100, amort, entretien:P*R.entretien/100, total:hyp*R.tauxTheorique/100+amort+P*R.entretien/100};
+  };
+  const plafondCharges=revenu*R.chargesMax/100;
+  // Prix maximal : la plus petite des trois limites
+  const maxFP = fp/(R.fondsPropresMin/100+f), maxDur = fpDur/(R.fondsPropresHorsLPPMin/100+f);
+  let lo=0, hi=2e7; for(let k=0;k<60;k++){ const mid=(lo+hi)/2; if(charges(mid).total<=plafondCharges) lo=mid; else hi=mid; }
+  const maxRev=lo;
+  const prixMax=Math.max(0,Math.min(maxFP,maxDur,maxRev));
+  const limite = prixMax===maxRev ? 'revenu' : prixMax===maxDur ? 'durs' : 'fp';
+  const P=num(I.prix);
+  const ch=charges(P);
+  const besoinFP=P*(R.fondsPropresMin/100+f), besoinDur=P*(R.fondsPropresHorsLPPMin/100+f);
+  const manqueFP=Math.max(0,besoinFP-fp,besoinDur-fpDur);
+  const revenuNecessaire=ch.total/(R.chargesMax/100);
+  return {cash,troisA,lpp,revenu,fp,fpDur,f,ansAmort,charges:ch,plafondCharges,maxFP,maxDur,maxRev,prixMax,limite,P,besoinFP,besoinDur,manqueFP,
+    revenuNecessaire, effort: revenu>0?ch.total/revenu*100:0, faisable: P>0 && manqueFP<=0 && ch.total<=plafondCharges+0.5};
+}
+function renderImmo(C){
+  const M=C.immo, R=LEGAL.immo, I=state.immo;
+  setText('immo_revenuHelp',`Vide = ${CHF(C.brutAnnuel+num(state.revenus.autres)*12)} (onglet 💰 Revenus). Pour un couple, additionnez les deux salaires.`);
+  setText('immo_cashHelp',`Vide = ${CHF(C.soldeEpargne+C.placements)} (comptes épargne et placements)`);
+  setText('immo_troisAHelp',`Vide = ${CHF(C.totalPilier)} (onglet 🌳 3ᵉ pilier)`);
+  setText('immo_lppHelp',`Vide = ${CHF(C.lpp.avoir)} (avoir actuel, onglet 🏛️ 2ᵉ pilier)`);
+  setText('immo_oMax',CHF(M.prixMax));
+  setText('immo_oFP',CHF(M.fp));
+  setText('immo_oCharges', M.P>0?CHF(M.charges.total/12):'–');
+  setText('immo_oEffort', M.P>0&&M.revenu>0?pct(M.effort):'–');
+  document.getElementById('immo_oEffortCard').className='stat'+(M.P>0&&M.revenu>0?(M.effort<=R.chargesMax?' green':' red'):'');
+  const ok=b=>b?'<span class="pill green">✅ OK</span>':'<span class="pill red">✗ Non</span>';
+  document.getElementById('immo_regles').innerHTML = M.P>0 ? `
+    <tr><td>Fonds propres : ${R.fondsPropresMin} % du prix + ${R.fraisAchat} % de frais d'achat</td><td class="num">${CHF(M.besoinFP)}</td><td class="num">${CHF(M.fp)}</td><td>${ok(M.fp>=M.besoinFP)}</td></tr>
+    <tr><td>Dont hors caisse de pension (fonds propres « durs ») : ${R.fondsPropresHorsLPPMin} % + frais</td><td class="num">${CHF(M.besoinDur)}</td><td class="num">${CHF(M.fpDur)}</td><td>${ok(M.fpDur>=M.besoinDur)}</td></tr>
+    <tr><td>Charges théoriques ≤ ${Math.round(R.chargesMax)} % du revenu brut (par an)</td><td class="num">≤ ${CHF(M.plafondCharges)}</td><td class="num">${CHF(M.charges.total)}</td><td>${ok(M.charges.total<=M.plafondCharges+0.5)}</td></tr>`
+    : `<tr><td colspan="4" class="muted">Indiquez le prix d'un bien pour vérifier chaque règle.</td></tr>`;
+  const lim={revenu:"votre revenu (charges théoriques)", durs:"vos fonds propres hors caisse de pension", fp:"vos fonds propres"}[M.limite];
+  let v='';
+  if(M.revenu<=0) v=`<div class="warn">Renseignez votre revenu (onglet 💰 Revenus ou champ ci-dessus).</div>`;
+  else if(!M.P) v=`<div class="info">Avec vos chiffres, le prix maximal est d'environ <b>${CHF(M.prixMax)}</b> ; ce qui limite : ${lim}.</div>`;
+  else if(M.faisable) v=`<div class="info">✅ Ce bien semble finançable selon les règles usuelles. Prix maximal estimé : ${CHF(M.prixMax)} (limité par ${lim}).</div>`;
+  else {
+    const pts=[];
+    if(M.manqueFP>0) pts.push(`il manque <b>${CHF(M.manqueFP)}</b> de fonds propres${M.fpDur<M.besoinDur?" (dont au moins une partie hors caisse de pension : épargne, 3a, donation…)":''}`);
+    if(M.charges.total>M.plafondCharges+0.5) pts.push(`les charges dépassent ${Math.round(R.chargesMax)} % du revenu : il faudrait un revenu brut d'environ <b>${CHF(M.revenuNecessaire)}</b> par an (+${CHF(M.revenuNecessaire-M.revenu)})`);
+    v=`<div class="warn">Pour un bien à ${CHF(M.P)} : ${pts.join(' ; ')}. Prix maximal actuel : <b>${CHF(M.prixMax)}</b> (limité par ${lim}).</div>`;
+  }
+  document.getElementById('immo_verdict').innerHTML=v;
+  // Objectif de vie lié
+  const obj=state.objectifs.find(o=>o.immo);
+  document.getElementById('immo_objectif').innerHTML = M.P>0
+    ? `<button class="btn-ghost btn-sm" onclick="lierObjectifImmo()">🎯 ${obj?"Mettre à jour l'objectif":"Créer l'objectif"} « Achat immobilier »</button> <span class="small muted">Montant : ${CHF(M.besoinDur+Math.max(0,M.besoinFP-M.besoinDur-M.lpp))} de fonds propres à réunir hors caisse de pension, déjà épargné : ${CHF(M.fpDur)}.</span>`
+    : '';
+  // Détail des charges
+  const c=M.charges;
+  document.getElementById('immo_detail').innerHTML = M.P>0 ? `
+    <tr><td>Hypothèque (prix − fonds propres après frais)</td><td class="num">${CHF(c.hyp)}</td><td class="small muted">${pct(M.P?c.hyp/M.P*100:0)} du prix</td></tr>
+    <tr><td>Intérêts théoriques (${pct(R.tauxTheorique)} de l'hypothèque)</td><td class="num">${CHF(c.interets)} / an</td><td class="small muted">Taux de test des banques, plus élevé que les taux réels</td></tr>
+    <tr><td>Amortissement jusqu'à ${Math.round(R.hypothequeCible)} % du prix en ${M.ansAmort} ans</td><td class="num">${CHF(c.amort)} / an</td><td class="small muted">${M.ansAmort<R.amortissementAns?'Raccourci : à terminer avant la retraite':''}</td></tr>
+    <tr><td>Entretien et frais accessoires (${pct(R.entretien)} du prix)</td><td class="num">${CHF(c.entretien)} / an</td><td></td></tr>
+    <tr class="total"><td>Charges théoriques</td><td class="num">${CHF(c.total)} / an</td><td class="num">${CHF(c.total/12)} / mois</td></tr>`
+    : `<tr><td class="muted">Indiquez le prix d'un bien.</td></tr>`;
+}
+// Crée ou met à jour l'objectif « Achat immobilier » : fonds propres à réunir hors caisse de pension
+function lierObjectifImmo(){
+  const M=CTX.immo; if(!M||!M.P) return;
+  const cible=Math.round(M.besoinDur+Math.max(0,M.besoinFP-M.besoinDur-M.lpp));
+  let o=state.objectifs.find(x=>x.immo);
+  if(!o){ o={nom:"Achat immobilier (fonds propres)",cible:"",date:"",deja:"",immo:true}; state.objectifs.push(o); }
+  o.cible=String(cible); o.deja=String(Math.round(Math.min(M.fpDur,cible)));
+  if(state.immo.date) o.date=state.immo.date;
+  renderObjectifs(); calc();
+  alert("✅ Objectif « Achat immobilier » enregistré dans l'onglet 🎯 Objectifs de vie.");
+}
+
 /* =================== COMPTES & FORTUNE =================== */
 function renderComptes(){
   const list=document.getElementById('list_comptes'); list.innerHTML='';
@@ -1661,6 +1791,8 @@ function calc(){
   renderRetraite(ctx);
   ctx.objectifs=computeObjectifs(ctx);
   renderObjectifsOut(ctx);
+  ctx.immo=computeImmo(ctx);
+  renderImmo(ctx);
   CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();
@@ -2164,6 +2296,7 @@ function exampleState(){
     {nom:"Voyage au Japon",cible:"6000",date:dans(10),deja:"1500"},
     {nom:"Nouvelle voiture",cible:"15000",date:dans(32),deja:"2000"}
   ];
+  s.immo={prix:"650000",revenu:"",date:dans(48),cash:"",troisA:"",lpp:""};
   s.retraite={age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""};
   s.profil={age:"30-44",objectif:"croissance",horizon:"4",besoin:"peu",revenus:"stable",connaissances:"bases",
     experience:"3a",reaction:"2",perte:"2",portefeuille:"2",esg:"oui"};

@@ -529,6 +529,28 @@
     <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> Montants avant impôts, exprimés <b>en francs d'aujourd'hui</b> (inflation supposée de 1 % par an, rendements diminués d'autant). La rente AVS réelle dépend de tout votre parcours (bonifications pour tâches éducatives, splitting en cas de mariage…). Les valeurs légales utilisées sont celles de <span class="annee-legale"></span>. Pour un calcul officiel : estimation de rente auprès de votre caisse AVS et certificat de votre caisse de pension.</div>
   </section>
 
+  <!-- ============ COUVERTURE DÉCÈS & INVALIDITÉ ============ -->
+  <section class="tab-page" data-tab="couverture">
+    <div class="card">
+      <h2>🩺 Décès et invalidité : que se passerait-il ?</h2>
+      <p class="sub">Ce que verseraient l'AI/AVS et votre caisse de pension, comparé à vos dépenses. Les montants viennent des onglets 🏖️ Retraite (rente AVS de référence), 🏛️ 2ᵉ pilier et 🧾 Impôts (enfants, état civil).</p>
+      <div class="grid g3">
+        <div><label>Besoins mensuels du ménage (CHF)</label><input type="number" id="couverture_besoins" oninput="calc()"><div class="inline-help" id="couverture_besoinsHelp"></div></div>
+        <div id="couverture_conjWrap"><label>Revenu net du/de la conjoint·e (CHF / mois)</label><input type="number" id="couverture_revenuConjoint" oninput="calc()"><div class="inline-help">Il continue en cas de décès ou d'invalidité</div></div>
+      </div>
+      <div id="couverture_situation" class="small muted" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>♿ En cas d'invalidité totale (maladie)</h2>
+      <div id="couverture_inv"></div>
+    </div>
+    <div class="card">
+      <h2>🕊️ En cas de décès</h2>
+      <div id="couverture_dec"></div>
+    </div>
+    <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> Hypothèses : invalidité à 100 % due à une maladie (un accident est mieux couvert par l'assurance-accidents LAA), rente AI calculée sur la même échelle que l'AVS. Les rentes de veuf/veuve dépendent de conditions (enfants, âge, durée du mariage) et font l'objet d'une réforme ; les concubins n'ont pas droit aux rentes AVS de survivant. Vérifiez votre certificat de caisse de pension et les assurances de votre employeur.</div>
+  </section>
+
   <!-- ============ OBJECTIFS DE VIE ============ -->
   <section class="tab-page" data-tab="objectifs">
     <div class="card">
@@ -1008,7 +1030,8 @@ function blankState(){
     lpp:{avoir:"",avoir65:"",tauxConv:"",rente65:"",rachatMax:"",tauxInteret:"",renteInvalidite:"",renteEnfantInvalide:"",
       renteConjoint:"",renteOrphelin:"",capitalDeces:"",rachatMontant:"",rachatAns:"1",retraitCapital:"non"},
     retraite:{age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""},
-    immo:{prix:"",revenu:"",date:"",cash:"",troisA:"",lpp:""}
+    immo:{prix:"",revenu:"",date:"",cash:"",troisA:"",lpp:""},
+    couverture:{besoins:"",revenuConjoint:""}
   };
 }
 // Champs simples des nouvelles sections : l'id HTML est « groupe_champ » (ex. perso_naissance).
@@ -1017,7 +1040,8 @@ const FIELDS={perso:['naissance'],
   lpp:['avoir','avoir65','tauxConv','rente65','rachatMax','tauxInteret','renteInvalidite','renteEnfantInvalide',
     'renteConjoint','renteOrphelin','capitalDeces','rachatMontant','rachatAns','retraitCapital'],
   retraite:['age','dureeCapital','avsMode','ram','anneesManquantes','renteExtrait','renteConjoint'],
-  immo:['prix','revenu','date','cash','troisA','lpp']};
+  immo:['prix','revenu','date','cash','troisA','lpp'],
+  couverture:['besoins','revenuConjoint']};
 // Complète un état chargé (ancienne sauvegarde, fichier importé) avec les champs ajoutés depuis.
 function normalizeState(s){
   const b=blankState();
@@ -1046,7 +1070,7 @@ const STEPS = [[1,"Mon budget","Budget"],[2,"Mon patrimoine","Patrimoine"],[3,"M
 const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["variables","🛒 Frais variables",1],
   ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],["suivi","📒 Suivi réel",1],
   ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],
-  ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],["retraite","🏖️ Retraite",3],
+  ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],["retraite","🏖️ Retraite",3],["couverture","🩺 Décès & invalidité",3],
   ["objectifs","🎯 Objectifs de vie",4],["immo","🏡 Achat immobilier",4],
   ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6]];
 const lastTab = {}; // dernier onglet ouvert dans chaque étape
@@ -1370,7 +1394,7 @@ function computeRetraite(C){
   const mPlac = renteDepuisCapital(capPlac);
   const total = avsMois + lppAn/12 + m3a + mPlac;
   const revenu = C.netMois;
-  return {ageR,n,facteur,ecart,ram,manq,viaExtrait,avsBase,avsMois,plafonne,conj,lppAn,lppCapital,convR,r3a,cap3a,m3a,rP,capPlac,mPlac,total,revenu,
+  return {ageR,n,facteur,ecart,ram,manq,viaExtrait,avsBase,avsMois,renteRef:avsBase,plafonne,conj,lppAn,lppCapital,convR,r3a,cap3a,m3a,rP,capPlac,mPlac,total,revenu,
     gap: revenu-total, gapCible: revenu*H.tauxRemplacementCible/100-total, taux: revenu>0?total/revenu*100:0};
 }
 function renderRetraite(C){
@@ -1434,6 +1458,55 @@ function renderRetraite(C){
     ${ligne('Garder 100 % du revenu actuel',R.gap,b100)}${R.gapCible>0?ligne(`Atteindre ${H.tauxRemplacementCible} % du revenu actuel`,R.gapCible,bCible):''}
     </tbody></table></div>
     <p class="small muted">Leviers possibles : versements 3a au maximum, rachat LPP (onglet 🏛️ 2ᵉ pilier), placements réguliers, retraite plus tardive, ou capitaux consommés sur moins d'années.</p>`;
+}
+
+/* =================== COUVERTURE DÉCÈS & INVALIDITÉ =================== */
+function computeCouverture(C){
+  const A=LEGAL.avs, L=state.lpp, K=state.couverture;
+  const ref=C.retraite.renteRef;                         // rente AVS/AI complète de référence (sans anticipation ni 13e rente)
+  const enfants=Math.max(0,Math.round(C.enfants)), couple=C.statut==='couple';
+  const besoins = K.besoins!=='' ? num(K.besoins) : C.depensesMois;
+  const conj = couple ? num(K.revenuConjoint) : 0;
+  const inv=[ ['🇨🇭 Rente AI',ref,'#d52b1e'],
+    ['🇨🇭 Rentes AI pour enfants',ref*A.renteEnfantAI/100*enfants,'#d52b1e'],
+    ['🏛️ Rente d\'invalidité LPP',num(L.renteInvalidite)/12,'#2563eb'],
+    ['🏛️ Rentes LPP pour enfants',num(L.renteEnfantInvalide)/12*enfants,'#2563eb'],
+    ['👤 Revenu du/de la conjoint·e',conj,'#0d9488'] ].filter(x=>x[1]>0);
+  const dec=[ ['🇨🇭 Rente AVS de veuf/veuve',couple?ref*A.renteVeuvage/100:0,'#d52b1e'],
+    ['🇨🇭 Rentes AVS d\'orphelin',ref*A.renteOrphelin/100*enfants,'#d52b1e'],
+    ['🏛️ Rente LPP de conjoint·e',couple?num(L.renteConjoint)/12:0,'#2563eb'],
+    ['🏛️ Rentes LPP d\'orphelin',num(L.renteOrphelin)/12*enfants,'#2563eb'],
+    ['👤 Revenu du/de la conjoint·e',conj,'#0d9488'] ].filter(x=>x[1]>0);
+  const tot=a=>a.reduce((s,x)=>s+x[1],0);
+  return {ref,enfants,couple,besoins,conj,inv,dec,totInv:tot(inv),totDec:tot(dec),capital:num(L.capitalDeces),lppSaisi:C.lpp.saisi};
+}
+function blocCouverture(lignes,total,besoins,capital){
+  const gap=besoins-total, max=Math.max(besoins,total,1), w=v=>Math.max(0,v)/max*100;
+  const segs=lignes.map(([l,v,c])=>`<div class="bar-seg" style="width:${w(v)}%;background:${c}" title="${l} : ${CHF(v)}/mois"></div>`).join('')
+    + (gap>0?`<div class="seg-gap" style="width:${w(gap)}%" title="Lacune : ${CHF(gap)}/mois"></div>`:'');
+  let h=`<div class="cmp-row"><div class="cmp-lbl">Besoins</div><div class="cmp-track"><div class="bar-seg" style="width:${w(besoins)}%;background:#64748b" title="Besoins : ${CHF(besoins)}/mois"></div></div><div class="cmp-val">${CHF(besoins)}</div></div>
+    <div class="cmp-row"><div class="cmp-lbl">Prestations</div><div class="cmp-track">${segs}</div><div class="cmp-val">${CHF(total)}</div></div>
+    <div class="tbl-wrap"><table><tbody>${lignes.map(([l,v,c])=>`<tr><td><span class="swatch" style="background:${c}"></span>${l}</td><td class="num">${CHF(v)} / mois</td></tr>`).join('')||'<tr><td class="muted">Aucune prestation estimée.</td><td></td></tr>'}
+    <tr class="total"><td>Total</td><td class="num">${CHF(total)} / mois</td></tr></tbody></table></div>`;
+  if(besoins>0) h+= gap>0
+    ? `<div class="warn">Lacune estimée : <b>${CHF(gap)} par mois</b>, soit ${pct(gap/besoins*100)} des besoins (${CHF(gap*12)} par an).${capital>0?` Le capital-décès de ${CHF(capital)} couvrirait cette lacune pendant environ ${Math.floor(capital/gap)} mois.`:''}</div>`
+    : `<div class="info">Les prestations estimées (${CHF(total)}/mois) couvrent les besoins indiqués (${CHF(besoins)}/mois).${capital>0?` S'y ajoute un capital-décès de ${CHF(capital)}.`:''}</div>`;
+  return h;
+}
+function renderCouverture(C){
+  const K=C.couverture;
+  setText('couverture_besoinsHelp',`Vide = vos dépenses du budget (${CHF(C.depensesMois)}/mois : frais, assurances, impôts)`);
+  document.getElementById('couverture_conjWrap').style.display=K.couple?'':'none';
+  const sit=[K.couple?'marié·e / partenariat enregistré':'personne seule', K.enfants?`${K.enfants} enfant${K.enfants>1?'s':''} à charge`:'sans enfant à charge',
+    `rente AVS/AI de référence ${CHF(K.ref)}/mois`];
+  let s=`Situation prise en compte : ${sit.join(' · ')} (modifiable dans 🧾 Impôts et 🏖️ Retraite).`;
+  if(!K.lppSaisi && !num(state.lpp.renteInvalidite)) s+=` <b>Prestations de la caisse de pension non renseignées</b> (onglet 🏛️ 2ᵉ pilier).`;
+  document.getElementById('couverture_situation').innerHTML=s;
+  document.getElementById('couverture_inv').innerHTML = blocCouverture(K.inv,K.totInv,K.besoins,0)
+    + `<p class="small muted">Pendant le délai d'attente de l'AI (en général au moins 1 an), c'est votre employeur ou son assurance perte de gain maladie qui verse le salaire, selon votre contrat.</p>`;
+  document.getElementById('couverture_dec').innerHTML = (!K.couple && !K.enfants)
+    ? `<div class="info">Personne seule sans enfant à charge : l'AVS et la LPP ne prévoient en principe pas de rente de survivant. ${K.capital>0?`Votre caisse prévoit un capital-décès de ${CHF(K.capital)} (bénéficiaires selon son règlement). `:''}La question concerne surtout vos proches (concubin·e, parents) et le règlement de vos dettes ; certaines caisses permettent d'inscrire un·e concubin·e comme bénéficiaire.</div>`
+    : blocCouverture(K.dec,K.totDec,K.besoins,K.capital);
 }
 
 /* =================== OBJECTIFS DE VIE =================== */
@@ -1980,6 +2053,8 @@ function calc(){
   renderStrategie(prof,ctx);
   renderLPP(ctx);
   renderRetraite(ctx);
+  ctx.couverture=computeCouverture(ctx);
+  renderCouverture(ctx);
   ctx.objectifs=computeObjectifs(ctx);
   renderObjectifsOut(ctx);
   ctx.immo=computeImmo(ctx);

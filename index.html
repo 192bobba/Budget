@@ -126,6 +126,12 @@
   .swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
   .idea h3{font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .idea p{margin:4px 0;font-size:13.5px}
+  .cmp-row{display:grid;grid-template-columns:120px 1fr 120px;gap:10px;align-items:center;margin:8px 0}
+  .cmp-lbl{font-size:13px;font-weight:600} .cmp-val{font-size:13.5px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+  .cmp-track{height:28px;display:flex;gap:2px;background:var(--bg);border-radius:6px;overflow:hidden}
+  .cmp-track .bar-seg{border-radius:0}
+  .seg-gap{background:repeating-linear-gradient(45deg,var(--rouge-bg),var(--rouge-bg) 6px,#fff 6px,#fff 12px);box-shadow:inset 0 0 0 1px var(--rouge)}
+  @media(max-width:720px){.cmp-row{grid-template-columns:1fr auto}.cmp-track{grid-column:1/-1}}
   .edu{font-size:12.5px;color:var(--muted);background:#fff;border:1px dashed var(--bord);border-radius:10px;padding:10px 12px;margin-bottom:18px}
   tr.best td{background:var(--vert-bg)}
   .tbl-wrap td.num{white-space:nowrap}
@@ -432,6 +438,86 @@
       <div id="lpp_cNote"></div>
     </div>
     <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> L'économie d'impôt dépend de votre canton et de votre commune ; les règles de rachat dépendent du règlement de votre caisse. Vérifiez auprès de votre caisse de pension avant tout rachat.</div>
+  </section>
+
+  <!-- ============ RETRAITE (3 PILIERS) ============ -->
+  <section class="tab-page" data-tab="retraite">
+    <div class="card">
+      <h2>🏖️ Votre retraite : les 3 piliers</h2>
+      <p class="sub">Estimation de vos revenus à la retraite (AVS + caisse de pension + 3a + placements), comparée à votre revenu actuel. Les chiffres déjà saisis ailleurs sont repris automatiquement.</p>
+      <div class="grid g3">
+        <div>
+          <label>Âge de départ à la retraite</label>
+          <select id="retraite_age" onchange="calc()">
+            <option value="63">63 ans (anticipée de 2 ans)</option><option value="64">64 ans (anticipée d'1 an)</option>
+            <option value="65">65 ans (âge de référence)</option><option value="66">66 ans (ajournée d'1 an)</option>
+            <option value="67">67 ans (ajournée de 2 ans)</option><option value="68">68 ans (ajournée de 3 ans)</option>
+            <option value="69">69 ans (ajournée de 4 ans)</option><option value="70">70 ans (ajournée de 5 ans)</option>
+          </select>
+          <div class="inline-help" id="retraite_ageHelp"></div>
+        </div>
+        <div>
+          <label>Capitaux (3a, placements) consommés sur… (années)</label>
+          <input type="number" id="retraite_dureeCapital" oninput="calc()">
+          <div class="inline-help" id="retraite_dureeHelp"></div>
+        </div>
+      </div>
+      <hr class="hr">
+      <h3 style="font-size:15px">1ᵉʳ pilier : AVS</h3>
+      <div class="grid g3">
+        <div>
+          <label>Comment estimer votre rente AVS ?</label>
+          <select id="retraite_avsMode" onchange="calc()">
+            <option value="estimation">Avec mon revenu et mes années de cotisation</option>
+            <option value="extrait">J'ai un extrait de compte / une estimation officielle</option>
+          </select>
+          <div class="inline-help">Une estimation officielle se demande gratuitement à votre caisse de compensation AVS</div>
+        </div>
+        <div class="avs-est">
+          <label>Revenu annuel moyen (CHF)</label>
+          <input type="number" id="retraite_ram" oninput="calc()">
+          <div class="inline-help" id="retraite_ramHelp"></div>
+        </div>
+        <div class="avs-est">
+          <label>Années de cotisation manquantes</label>
+          <input type="number" id="retraite_anneesManquantes" min="0" max="44" oninput="calc()">
+          <div class="inline-help">Années à l'étranger, études sans cotisation… Chaque année manquante réduit la rente d'1/44</div>
+        </div>
+        <div class="avs-ext">
+          <label>Rente AVS selon l'extrait (CHF / mois, à 65 ans)</label>
+          <input type="number" id="retraite_renteExtrait" oninput="calc()">
+        </div>
+        <div id="retraite_conjWrap">
+          <label>Rente AVS estimée du/de la conjoint·e (CHF / mois)</label>
+          <input type="number" id="retraite_renteConjoint" oninput="calc()">
+          <div class="inline-help" id="retraite_conjHelp"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Votre revenu à la retraite <span class="small muted" id="retraite_quand"></span></h2>
+      <div class="grid g5">
+        <div class="stat"><div class="lbl">AVS</div><div class="val" id="retraite_oAvs">–</div></div>
+        <div class="stat"><div class="lbl">Caisse de pension</div><div class="val" id="retraite_oLpp">–</div></div>
+        <div class="stat"><div class="lbl">3ᵉ pilier</div><div class="val" id="retraite_o3a">–</div></div>
+        <div class="stat"><div class="lbl">Placements</div><div class="val" id="retraite_oPlac">–</div></div>
+        <div class="stat blue"><div class="lbl">Total / mois</div><div class="val" id="retraite_oTotal">–</div></div>
+      </div>
+      <div style="margin-top:18px" id="retraite_chart"></div>
+      <div class="small muted" id="retraite_legend" style="margin-top:6px"></div>
+      <div id="retraite_ecart" style="margin-top:12px"></div>
+      <div class="tbl-wrap" style="margin-top:8px"><table>
+        <thead><tr><th>Source</th><th class="num">Capital à la retraite</th><th class="num">Revenu / mois</th><th>Comment c'est calculé</th></tr></thead>
+        <tbody id="retraite_table"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>🎯 Combler l'écart</h2>
+      <div id="retraite_combler"></div>
+    </div>
+    <div class="edu">ℹ️ <b>Estimation simplifiée, à but éducatif.</b> Montants avant impôts, exprimés <b>en francs d'aujourd'hui</b> (inflation supposée de 1 % par an, rendements diminués d'autant). La rente AVS réelle dépend de tout votre parcours (bonifications pour tâches éducatives, splitting en cas de mariage…). Les valeurs légales utilisées sont celles de <span class="annee-legale"></span>. Pour un calcul officiel : estimation de rente auprès de votre caisse AVS et certificat de votre caisse de pension.</div>
   </section>
 
   <!-- ============ COMPTES & FORTUNE ============ -->
@@ -758,6 +844,7 @@ const LEGAL={
     rendementPendantRetraite:1.5,          // % par an sur le capital restant pendant la retraite
     rendement3aBancaire:0.5,               // % : compte 3a bancaire
     tauxRemplacementCible:80,              // % du revenu actuel souvent jugé suffisant à la retraite
+    inflation:1.0,                         // % par an : la retraite est exprimée en francs d'aujourd'hui
     reductionConversionParAnAnticipe:0.2   // points de % en moins sur le taux de conversion LPP par année d'anticipation (varie selon la caisse)
   }
 };
@@ -807,14 +894,16 @@ function blankState(){
     strategie:{capital:"",mensuel:""},  // montants à investir saisis à la main (vide = calcul automatique)
     perso:{naissance:""},
     lpp:{avoir:"",avoir65:"",tauxConv:"",rente65:"",rachatMax:"",tauxInteret:"",renteInvalidite:"",renteEnfantInvalide:"",
-      renteConjoint:"",renteOrphelin:"",capitalDeces:"",rachatMontant:"",rachatAns:"1",retraitCapital:"non"}
+      renteConjoint:"",renteOrphelin:"",capitalDeces:"",rachatMontant:"",rachatAns:"1",retraitCapital:"non"},
+    retraite:{age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""}
   };
 }
 // Champs simples des nouvelles sections : l'id HTML est « groupe_champ » (ex. perso_naissance).
 // Ils sont lus / écrits automatiquement par pull() et push(), donc sauvegardés, exportés et importés.
 const FIELDS={perso:['naissance'],
   lpp:['avoir','avoir65','tauxConv','rente65','rachatMax','tauxInteret','renteInvalidite','renteEnfantInvalide',
-    'renteConjoint','renteOrphelin','capitalDeces','rachatMontant','rachatAns','retraitCapital']};
+    'renteConjoint','renteOrphelin','capitalDeces','rachatMontant','rachatAns','retraitCapital'],
+  retraite:['age','dureeCapital','avsMode','ram','anneesManquantes','renteExtrait','renteConjoint']};
 // Complète un état chargé (ancienne sauvegarde, fichier importé) avec les champs ajoutés depuis.
 function normalizeState(s){
   const b=blankState();
@@ -840,7 +929,7 @@ const STEPS = [[1,"Mon budget","Budget"],[2,"Mon patrimoine","Patrimoine"],[3,"M
 const TABS = [["revenus","💰 Revenus",1],["fixes","🏠 Frais fixes",1],["variables","🛒 Frais variables",1],
   ["assurances","🛡️ Assurances",1],["impots","🧾 Impôts",1],["budget","⚖️ Budget",1],["paie","💸 Jour de paie",1],
   ["epargne","🐷 Épargne",2],["fortune","🏦 Comptes & Fortune",2],
-  ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],
+  ["lpp","🏛️ 2ᵉ pilier (LPP)",3],["pilier","🌳 3ᵉ pilier",3],["retraite","🏖️ Retraite",3],
   ["profil","🧑‍💼 Profil investisseur",5],["strategie","🧭 Plan d'action",6]];
 const lastTab = {}; // dernier onglet ouvert dans chaque étape
 function buildTabs(){
@@ -1104,6 +1193,129 @@ function renderLPP(C){
   document.getElementById('lpp_cNote').innerHTML=`<p class="small muted">Hypothèses : intérêt LPP ${pct2(R.i)} ; rendement ${inv.provisoire?"d'un profil équilibré (profil investisseur non rempli)":'de votre profil'} ${pct(r)} ; 3a ${r3a===r?'en titres':'bancaire'} ${pct(r3a)} ; impôt au retrait en capital ≈ ${pct(tCap*100)} (varie selon le canton). Non pris en compte : impôt sur la fortune et sur les revenus du placement libre, frais. Le rachat est d'autant plus intéressant que votre taux d'imposition est élevé et la retraite proche ; le placement libre reste disponible.</p>`;
 }
 
+/* =================== RETRAITE (3 PILIERS) =================== */
+// Rente AVS complète (échelle 44) selon le revenu annuel moyen — formule de l'art. 34 LAVS
+function renteAVSComplete(ram){
+  const A=LEGAL.avs, mn=A.renteMin;
+  const r = ram<=36*mn ? 0.74*mn + 13/600*ram : 1.04*mn + 8/600*ram;
+  return Math.min(A.renteMax, Math.max(mn, r));
+}
+const reel=tauxPct=>((1+tauxPct/100)/(1+LEGAL.hypotheses.inflation/100)-1)*100; // rendement après inflation (%)
+const fvAnnuite=(tauxPct,n)=>{ const r=tauxPct/100; return Math.abs(r)<1e-9 ? n : (Math.pow(1+r,n)-1)/r; }; // valeur future de 1 CHF versé chaque année
+function renteDepuisCapital(cap){ // revenu mensuel tiré d'un capital consommé sur N années
+  const H=LEGAL.hypotheses, D=num(state.retraite.dureeCapital)||H.dureeCapitalRetraite, i=reel(H.rendementPendantRetraite)/100/12, m=D*12;
+  return cap<=0 ? 0 : (i>0 ? cap*i/(1-Math.pow(1+i,-m)) : cap/m);
+}
+function capitalPourRente(mensuel){ // capital nécessaire pour verser « mensuel » pendant N années
+  const H=LEGAL.hypotheses, D=num(state.retraite.dureeCapital)||H.dureeCapitalRetraite, i=reel(H.rendementPendantRetraite)/100/12, m=D*12;
+  return mensuel<=0 ? 0 : (i>0 ? mensuel*(1-Math.pow(1+i,-m))/i : mensuel*m);
+}
+function computeRetraite(C){
+  const R=state.retraite, A=LEGAL.avs, H=LEGAL.hypotheses, ref=A.ageReference;
+  const ageR=ageRetraite(), n = C.age!=null ? Math.max(0,ageR-C.age) : null;
+  /* AVS */
+  const ecart=ageR-ref;
+  const facteur = ecart<0 ? 1-A.reductionAnticipationParAn/100*Math.min(-ecart,A.anticipationMaxAns)
+                : ecart>0 ? 1+(A.supplementAjournement[Math.min(ecart,A.ajournementMaxAns)]||0)/100 : 1;
+  const ram = R.ram!=='' ? num(R.ram) : C.brutAnnuel;
+  const manq = Math.min(A.anneesCompletes, Math.max(0,num(R.anneesManquantes)));
+  const viaExtrait = R.avsMode==='extrait' && num(R.renteExtrait)>0;
+  let avsBase = viaExtrait ? num(R.renteExtrait) : (ram>0 ? renteAVSComplete(ram)*(A.anneesCompletes-manq)/A.anneesCompletes : 0);
+  let avs = avsBase*facteur;
+  const conj = C.statut==='couple' ? num(R.renteConjoint) : 0;
+  let plafonne=false;
+  if(conj>0 && avs+conj>A.plafondCouple){ avs*=A.plafondCouple/(avs+conj); plafonne=true; } // votre part du plafond du couple
+  const avsMois = avs*(A.treiziemeRente?13/12:1);  // 13e rente répartie sur l'année
+  /* LPP */
+  const L=C.lpp; let lppAn=0, lppCapital=0, convR=L.conv;
+  if(L.saisi){
+    if(ageR===ref){ lppCapital=L.avoir65; lppAn=L.renteAn; }
+    else {
+      convR = Math.max(0, L.conv + ecart*H.reductionConversionParAnAnticipe);
+      if(ecart<0) lppCapital = (C.age!=null && ref>C.age) ? L.avoir+(L.avoir65-L.avoir)*Math.max(0,ageR-C.age)/(ref-C.age) : L.avoir65;
+      else lppCapital = L.avoir65*Math.pow(1+L.i/100, ecart);
+      lppAn = lppCapital*convR/100;
+    }
+    const defl=Math.pow(1+H.inflation/100, n||0); // montants du certificat = francs futurs → francs d'aujourd'hui
+    lppCapital/=defl; lppAn/=defl;
+  }
+  /* 3a : soldes actuels + versements annuels jusqu'à la retraite */
+  const r3a = reel(state.pilier.some(x=>x.kind==='titres') ? C.inv.S.ret : H.rendement3aBancaire);
+  const nn=n||0, tCap=H.impotRetraitCapital/100;
+  const cap3a = C.totalPilier*Math.pow(1+r3a/100,nn) + C.versement3a*fvAnnuite(r3a,nn);
+  const m3a = renteDepuisCapital(cap3a*(1-tCap));
+  /* Placements libres (onglet Plan d'action) */
+  const rP=reel(C.inv.S.ret);
+  const capPlac = C.inv.capital*Math.pow(1+rP/100,nn) + C.inv.mensuel*12*fvAnnuite(rP,nn);
+  const mPlac = renteDepuisCapital(capPlac);
+  const total = avsMois + lppAn/12 + m3a + mPlac;
+  const revenu = C.netMois;
+  return {ageR,n,facteur,ecart,ram,manq,viaExtrait,avsBase,avsMois,plafonne,conj,lppAn,lppCapital,convR,r3a,cap3a,m3a,rP,capPlac,mPlac,total,revenu,
+    gap: revenu-total, gapCible: revenu*H.tauxRemplacementCible/100-total, taux: revenu>0?total/revenu*100:0};
+}
+function renderRetraite(C){
+  const R=C.retraite, A=LEGAL.avs, H=LEGAL.hypotheses, S=state.retraite;
+  // Aides et visibilité
+  setText('retraite_ageHelp', R.ecart<0 ? `AVS réduite d'environ ${pct((1-R.facteur)*100)} à vie (${pct(A.reductionAnticipationParAn)} par année d'anticipation)`
+    : R.ecart>0 ? `AVS augmentée d'environ ${pct((R.facteur-1)*100)} (supplément d'ajournement)` : "Âge de référence AVS (hommes et femmes)");
+  setText('retraite_dureeHelp',`Vide = ${H.dureeCapitalRetraite} ans, avec ${pct(H.rendementPendantRetraite)} de rendement pendant la retraite`);
+  setText('retraite_ramHelp',`Vide = votre salaire brut annuel actuel (${CHF(C.brutAnnuel)}), comme approximation de la moyenne de carrière`);
+  document.getElementById('retraite_ram').placeholder=Math.round(C.brutAnnuel)||'';
+  document.querySelectorAll('.avs-est').forEach(e=>e.style.display=S.avsMode==='extrait'?'none':'');
+  document.querySelectorAll('.avs-ext').forEach(e=>e.style.display=S.avsMode==='extrait'?'':'none');
+  document.getElementById('retraite_conjWrap').style.display=C.statut==='couple'?'':'none';
+  setText('retraite_conjHelp',`Pour appliquer le plafond des deux rentes d'un couple marié (${CHF(A.plafondCouple)}/mois)`);
+  setText('retraite_quand', C.age!=null ? `à ${R.ageR} ans, en ${new Date().getFullYear()+R.n}` : '');
+  // Chiffres
+  setText('retraite_oAvs',CHF(R.avsMois)); setText('retraite_oLpp',CHF(R.lppAn/12));
+  setText('retraite_o3a',CHF(R.m3a)); setText('retraite_oPlac',CHF(R.mPlac)); setText('retraite_oTotal',CHF(R.total));
+  // Graphique : revenu actuel vs revenu à la retraite (barres empilées)
+  const COL={avs:'#d52b1e',lpp:'#2563eb',p3a:'#0d9488',plac:'#7c3aed'};
+  const parts=[['avs','AVS',R.avsMois],['lpp','Caisse de pension',R.lppAn/12],['p3a','3ᵉ pilier',R.m3a],['plac','Placements',R.mPlac]];
+  const max=Math.max(R.revenu,R.total,1), w=v=>Math.max(0,v)/max*100;
+  const segs=parts.filter(x=>x[2]>0).map(([k,l,v])=>`<div class="bar-seg" style="width:${w(v)}%;background:${COL[k]}" title="${l} : ${CHF(v)}/mois">${w(v)>9?CHF(v).replace('CHF ',''):''}</div>`).join('')
+    + (R.gap>0?`<div class="seg-gap" style="width:${w(R.gap)}%" title="Écart : ${CHF(R.gap)}/mois"></div>`:'');
+  document.getElementById('retraite_chart').innerHTML = R.revenu>0 || R.total>0 ? `
+    <div class="cmp-row"><div class="cmp-lbl">Aujourd'hui</div><div class="cmp-track"><div class="bar-seg" style="width:${w(R.revenu)}%;background:#64748b" title="Revenu net actuel : ${CHF(R.revenu)}/mois"></div></div><div class="cmp-val">${CHF(R.revenu)}</div></div>
+    <div class="cmp-row"><div class="cmp-lbl">À la retraite</div><div class="cmp-track">${segs}</div><div class="cmp-val">${CHF(R.total)}</div></div>` : '';
+  document.getElementById('retraite_legend').innerHTML = [['#64748b','Revenu net actuel'],...parts.map(([k,l])=>[COL[k],l])].map(([c,l])=>`<span style="display:inline-block;margin-right:14px"><span class="swatch" style="background:${c}"></span>${l}</span>`).join('')
+    + (R.gap>0?`<span style="display:inline-block"><span class="swatch seg-gap"></span>Écart</span>`:'');
+  // Écart
+  let e='';
+  if(C.age==null) e+=`<div class="warn">Indiquez votre année de naissance (onglet 💰 Revenus) : sans elle, le 3a et les placements ne peuvent pas être projetés jusqu'à la retraite.</div>`;
+  if(R.revenu<=0) e+=`<div class="warn">Renseignez vos revenus (onglet 💰 Revenus) pour comparer.</div>`;
+  else if(R.gap>0) e+=`<div class="warn">📉 À la retraite, vous toucheriez environ <b>${CHF(R.total)}/mois</b>, soit <b>${pct(R.taux)}</b> de votre revenu net actuel : il manque <b>${CHF(R.gap)}/mois</b> (${pct(R.gap/R.revenu*100)}). On considère souvent qu'environ ${H.tauxRemplacementCible} % du revenu suffit (certaines dépenses disparaissent) : ${R.gapCible>0?`écart à ${H.tauxRemplacementCible} % : ${CHF(R.gapCible)}/mois`:`cet objectif de ${H.tauxRemplacementCible} % est atteint`}.</div>`;
+  else e+=`<div class="info">✅ Votre revenu à la retraite (${CHF(R.total)}/mois) couvre votre revenu net actuel (${pct(R.taux)}).</div>`;
+  document.getElementById('retraite_ecart').innerHTML=e;
+  // Détail
+  const tCap=H.impotRetraitCapital;
+  const avsTxt = R.viaExtrait ? `Extrait AVS : ${CHF(R.avsBase)}/mois` : `Revenu moyen ${CHF(R.ram)}, ${A.anneesCompletes-R.manq}/${A.anneesCompletes} années → ${CHF(R.avsBase)}/mois`;
+  const rows=[
+    ['🇨🇭 AVS','—',R.avsMois, `${avsTxt}${R.ecart?`, ${R.ecart<0?'réduite':'augmentée'} à ${CHF(R.avsBase*R.facteur)}`:''}${R.plafonne?', plafond du couple appliqué':''}${A.treiziemeRente?', + 13ᵉ rente (1/12) répartie sur l\'année':''}`],
+    ['🏛️ Caisse de pension',R.lppCapital?CHF(R.lppCapital):'—',R.lppAn/12, C.lpp.saisi?`Rente = avoir × taux de conversion ${pct2(R.convR)}${R.ecart?` (ajusté de ${H.reductionConversionParAnAnticipe.toLocaleString('fr-CH')} point par année ${R.ecart<0?'d\'anticipation':'d\'ajournement'})`:''}`:'Renseignez l\'onglet 🏛️ 2ᵉ pilier'],
+    ['🌳 3ᵉ pilier',CHF(R.cap3a),R.m3a, `Soldes actuels + ${CHF(C.versement3a)}/an à ${pct(R.r3a)} après inflation, moins ≈ ${pct(tCap)} d'impôt au retrait`],
+    ['📈 Placements',CHF(R.capPlac),R.mPlac, `${CHF(C.inv.capital)} + ${CHF(C.inv.mensuel)}/mois (onglet 🧭 Plan d'action) à ${pct(R.rP)} après inflation${C.inv.provisoire?' (profil équilibré supposé)':''}`]
+  ];
+  document.getElementById('retraite_table').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${CHF(r[2])}</td><td class="small">${r[3]}</td></tr>`).join('')
+    + `<tr class="total"><td>Total</td><td></td><td class="num">${CHF(R.total)}</td><td class="small">Capitaux consommés sur ${num(state.retraite.dureeCapital)||H.dureeCapitalRetraite} ans</td></tr>`;
+  // Combler l'écart
+  const cb=document.getElementById('retraite_combler');
+  if(R.revenu<=0){ cb.innerHTML='<p class="muted">Renseignez d\'abord vos revenus.</p>'; return; }
+  const besoin = g => { // capital et épargne mensuelle nécessaires pour un écart g (CHF/mois)
+    const cap=capitalPourRente(Math.max(0,g)); const nm=(R.n||0)*12, i=R.rP/100/12;
+    const mens = nm>0 ? (i>0 ? cap*i/(Math.pow(1+i,nm)-1) : cap/nm) : null;
+    return {cap,mens};
+  };
+  const b100=besoin(R.gap), bCible=besoin(R.gapCible);
+  if(R.gap<=0){ cb.innerHTML=`<div class="info">✅ Pas d'écart à combler avec vos hypothèses actuelles. Gardez le cap : versements 3a, placements réguliers, et vérifiez votre certificat de caisse chaque année.</div>`; return; }
+  const ligne=(lbl,g,b)=>`<tr><td>${lbl}</td><td class="num">${CHF(Math.max(0,g))}/mois</td><td class="num">${CHF(b.cap)}</td><td class="num"><b>${b.mens!=null?CHF(b.mens)+'/mois':'—'}</b></td></tr>`;
+  cb.innerHTML=`<p class="sub">Épargne <b>supplémentaire</b> à mettre de côté chaque mois dès maintenant${R.n!=null?` (pendant ${R.n} ans)`:''}, placée à ${pct(R.rP)} par an après inflation, pour combler l'écart (en francs d'aujourd'hui). Elle s'ajoute aux placements déjà prévus.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Objectif</th><th class="num">Écart</th><th class="num">Capital nécessaire</th><th class="num">Épargne nécessaire</th></tr></thead><tbody>
+    ${ligne('Garder 100 % du revenu actuel',R.gap,b100)}${R.gapCible>0?ligne(`Atteindre ${H.tauxRemplacementCible} % du revenu actuel`,R.gapCible,bCible):''}
+    </tbody></table></div>
+    <p class="small muted">Leviers possibles : versements 3a au maximum, rachat LPP (onglet 🏛️ 2ᵉ pilier), placements réguliers, retraite plus tardive, ou capitaux consommés sur moins d'années.</p>`;
+}
+
 /* =================== COMPTES & FORTUNE =================== */
 function renderComptes(){
   const list=document.getElementById('list_comptes'); list.innerHTML='';
@@ -1352,9 +1564,11 @@ function calc(){
     impotsMois, epargne3aMois, totFixes, totVar, totAss});
   ctx.inv=computeInvest(prof,ctx);
   ctx.lpp=computeLPP(ctx);
+  ctx.retraite=computeRetraite(ctx);
   renderProfilResult(prof);
   renderStrategie(prof,ctx);
   renderLPP(ctx);
+  renderRetraite(ctx);
   CTX=ctx; // dernier état calculé, réutilisé par les autres sections
 
   save0();
@@ -1853,6 +2067,7 @@ function exampleState(){
   s.lpp={avoir:"85000",avoir65:"410000",tauxConv:"5.8",rente65:"",rachatMax:"45000",tauxInteret:"1.5",
     renteInvalidite:"22000",renteEnfantInvalide:"4400",renteConjoint:"13200",renteOrphelin:"4400",capitalDeces:"",
     rachatMontant:"10000",rachatAns:"1",retraitCapital:"non"};
+  s.retraite={age:"65",dureeCapital:"",avsMode:"estimation",ram:"",anneesManquantes:"0",renteExtrait:"",renteConjoint:""};
   s.profil={age:"30-44",objectif:"croissance",horizon:"4",besoin:"peu",revenus:"stable",connaissances:"bases",
     experience:"3a",reaction:"2",perte:"2",portefeuille:"2",esg:"oui"};
   return s;
@@ -1870,6 +2085,7 @@ function init(){
   const L3=LEGAL.pilier3a;
   setText('p_plafondHelp',`${LEGAL.annee} : ${CHF(L3.avecCaisse)} avec caisse de pension · ${L3.sansCaissePct} % du revenu (max ${CHF(L3.sansCaisseMax)}) sans caisse`);
   document.getElementById('p_versement').placeholder=L3.avecCaisse;
+  document.querySelectorAll('.annee-legale').forEach(e=>e.textContent=LEGAL.annee);
   const saved=localStorage.getItem(LS_KEY);
   if(saved){ try{ state=normalizeState(JSON.parse(saved)); }catch(e){ state=exampleState(); } }
   else { state=exampleState(); } // 1re ouverture : on pré-remplit avec l'exemple
